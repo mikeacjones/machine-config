@@ -56,3 +56,9 @@ _autosuggest_or_complete() {
 }
 zle -N _autosuggest_or_complete
 bindkey '\t' _autosuggest_or_complete
+
+# -- title rewrite ---
+precmd() {
+  # %1d shows only the current folder name. Use %~ to show the full relative path.
+  print -Pn "\e]0;%1d\a" 
+}
