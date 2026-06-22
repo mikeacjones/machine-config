@@ -18,6 +18,7 @@ git clone https://github.com/mikeacjones/machine-config ~/Source/machine-config
 3. **zsh plugins** — clones `zsh-autosuggestions` and `zsh-syntax-highlighting` into `~/.zsh/` (sourced by `.zshrc`).
 4. **Rust** — installs `rustup` via the official installer (`--no-modify-path`; `~/.cargo/bin` is on PATH via `.zshrc`) and sets the `stable` toolchain.
 5. **Dotfiles** — symlinks everything under [`home/`](./home) into `$HOME` (mirroring the structure), backing up any existing files to `~/.machine-config-backup/<timestamp>/`.
+6. **Default editor** — [`install/default-editor.sh`](./install/default-editor.sh) uses `duti` to make Zed the default app for text/source-code file types.
 
 ## Layout
 
