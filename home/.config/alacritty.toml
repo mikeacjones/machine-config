@@ -27,6 +27,6 @@ padding = { x = 8, y = 25 }
 # Launch tmux directly as Alacritty's shell.
 # `new-session -A -s main` = attach to "main" if it exists, else create it.
 # Every Alacritty window drops straight into tmux. Detach with prefix+d.
-[terminal.shell]
-program = "/opt/homebrew/bin/tmux"
-args = ["new-session", "-A", "-s", "main"]
+#[terminal.shell]
+#program = "/opt/homebrew/bin/tmux"
+#args = ["new-session", "-A", "-s", "main"]
