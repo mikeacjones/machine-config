@@ -44,6 +44,7 @@ source "$HOME/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 
 # --- aliases ---
 alias access-sa-demo="/Users/mjones/.scripts/eks/access-sa-demo-eks-cluster.sh"
+alias la="ls -la"
 
 # --- keybindings ---
 _autosuggest_or_complete() {
