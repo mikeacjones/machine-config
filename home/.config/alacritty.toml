@@ -1,0 +1,29 @@
+[font]
+size = 18.0
+
+[font.normal]
+family = "Iosevka Term"
+style = "Regular"
+
+[font.bold]
+family = "Iosevka Term"
+style = "Bold"
+
+[font.italic]
+family = "Iosevka Term"
+style = "Italic"
+
+[window]
+dimensions = { columns = 100, lines = 25 }
+# Transparent title bar (macOS): the terminal background shows through it, so the
+# window looks seamless. Traffic-light buttons stay. Use "Buttonless" to drop them.
+decorations = "Transparent"
+# Match the title-bar button/text styling to a dark background.
+decorations_theme_variant = "Dark"
+
+# Launch tmux directly as Alacritty's shell.
+# `new-session -A -s main` = attach to "main" if it exists, else create it.
+# Every Alacritty window drops straight into tmux. Detach with prefix+d.
+[terminal.shell]
+program = "/opt/homebrew/bin/tmux"
+args = ["new-session", "-A", "-s", "main"]
