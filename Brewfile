@@ -18,7 +18,6 @@ brew "opal-security"
 brew "node"
 
 # --- GUI apps (casks) ---
-cask "alacritty"   # terminal emulator
 cask "zed"         # editor
 
 # --- fonts ---
