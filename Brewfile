@@ -8,11 +8,10 @@ brew "gh"          # github cli
 brew "ripgrep"     # fast grep (rg)
 brew "hyperfine"   # benchmarking
 brew "go"          # go toolchain
+brew "awscli"      # aws command-line interface
 brew "duti"        # set default apps by file type (used to make Zed the default editor)
-# Rust is installed via rustup in bootstrap.sh (not brew), so it self-manages toolchains.
-# brew "git"       # newer git than macOS system git, uncomment if wanted
-# brew "fd"
-# brew "bat"
+brew "git"       # newer git than macOS system git, uncomment if wanted
+brew "opalsecurity/brew/opal-security"
 
 # --- GUI apps (casks) ---
 cask "alacritty"   # terminal emulator
