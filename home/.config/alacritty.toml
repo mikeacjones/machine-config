@@ -20,6 +20,9 @@ dimensions = { columns = 100, lines = 25 }
 decorations = "Transparent"
 # Match the title-bar button/text styling to a dark background.
 decorations_theme_variant = "Dark"
+# Padding (pixels). y clears the transparent title bar so text isn't under the
+# window controls. Note: y applies to BOTH top and bottom (no top-only option).
+padding = { x = 8, y = 25 }
 
 # Launch tmux directly as Alacritty's shell.
 # `new-session -A -s main` = attach to "main" if it exists, else create it.
