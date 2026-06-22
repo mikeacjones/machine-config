@@ -18,7 +18,7 @@ dimensions = { columns = 100, lines = 25 }
 # Transparent title bar (macOS): the terminal background shows through it, so the
 # window looks seamless. Traffic-light buttons stay. Use "Buttonless" to drop them.
 #decorations = "Transparent"
-decoration = "Full"
+decorations = "Full"
 # Match the title-bar button/text styling to a dark background.
 decorations_theme_variant = "Dark"
 # Padding (pixels). y clears the transparent title bar so text isn't under the
