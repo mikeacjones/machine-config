@@ -8,6 +8,7 @@ brew "gh"          # github cli
 brew "ripgrep"     # fast grep (rg)
 brew "hyperfine"   # benchmarking
 brew "go"          # go toolchain
+brew "duti"        # set default apps by file type (used to make Zed the default editor)
 # Rust is installed via rustup in bootstrap.sh (not brew), so it self-manages toolchains.
 # brew "git"       # newer git than macOS system git, uncomment if wanted
 # brew "fd"

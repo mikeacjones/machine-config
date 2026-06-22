@@ -61,5 +61,9 @@ fi
 step "dotfiles"
 "$REPO_ROOT/install/link.sh"
 
+# 6. Default editor --------------------------------------------------------
+step "default editor (Zed)"
+"$REPO_ROOT/install/default-editor.sh"
+
 step "Done"
 echo "Open a new Alacritty window (you'll land in tmux), or run: exec zsh"
