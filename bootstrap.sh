@@ -30,6 +30,9 @@ fi
 step "brew bundle"
 brew bundle --file "$REPO_ROOT/Brewfile"
 
+# 2a. Install rustup
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
 # 2b. Install alacritty via manual build
 git clone https://github.com/alacritty/alacritty /tmp/alacritty
 make -C /tmp/alacritty app
