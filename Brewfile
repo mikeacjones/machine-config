@@ -16,13 +16,15 @@ brew "make"
 brew "zsh"
 brew "helm"
 brew "opentofu"
+brew "minikube"
 brew "derailed/k9s/k9s", trusted: true
 
 # --- Temporal Specific CLIs ---
 brew "opalsecurity/brew/opal-security", trusted: true
 
 # --- GUI Apps (casks) ---
-cask "zed"         # fast code editor
+cask "zed"
+cask "docker-desktop"
 
 # --- Fonts ---
 cask "font-iosevka"
