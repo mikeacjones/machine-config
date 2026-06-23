@@ -14,6 +14,7 @@ brew "git"
 brew "node"
 brew "make"
 brew "zsh"
+brew "helm"
 brew "opentofu"
 brew "derailed/k9s/k9s", trusted: true
 
