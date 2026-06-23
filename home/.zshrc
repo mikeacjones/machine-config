@@ -28,8 +28,9 @@ source "$HOME/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh"
 source "$HOME/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 
 # --- aliases ---
-alias access-sa-demo="/Users/mjones/.scripts/eks/access-sa-demo-eks-cluster.sh"
+alias access-sa-demo="$HOME/.scripts/eks/access-sa-demo-eks-cluster.sh"
 alias la="ls -la"
+alias minikube-temp="$HOME/.scripts/minikube/temp-kube.sh"
 
 # --- keybindings ---
 _autosuggest_or_complete() {
@@ -45,7 +46,7 @@ bindkey '\t' _autosuggest_or_complete
 # -- title rewrite ---
 precmd() {
   # %1d shows only the current folder name. Use %~ to show the full relative path.
-  print -Pn "\e]0;%1d\a" 
+  print -Pn "\e]0;%1d\a"
 }
 
 # -- prompt --
