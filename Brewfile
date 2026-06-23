@@ -17,6 +17,7 @@ brew "git"       # newer git than macOS system git, uncomment if wanted
 brew "opal-security"
 brew "node"
 brew "make"
+brew "zsh"
 
 # --- GUI apps (casks) ---
 cask "zed"         # editor
