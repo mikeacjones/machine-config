@@ -24,7 +24,7 @@ SPECIFIC=(
   public.lisp-source public.python-script public.ruby-script public.perl-script
   public.php-script public.csh-script public.make-source public.java-source
   com.sun.java-source com.netscape.javascript-source
-  public.html public.css net.daringfireball.markdown
+  public.css net.daringfireball.markdown
   public.comma-separated-values-text public.tab-separated-values-text public.log
 )
 

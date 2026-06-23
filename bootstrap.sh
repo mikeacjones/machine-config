@@ -11,7 +11,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 step() { printf '\n\033[1;34m==> %s\033[0m\n' "$1"; }
 
-# 1. Homebrew --------------------------------------------------------------
+# --- Homebrew ---
 step "Homebrew"
 if ! command -v brew >/dev/null 2>&1; then
   echo "Installing Homebrew..."
@@ -26,20 +26,20 @@ elif [ -x /usr/local/bin/brew ]; then
   eval "$(/usr/local/bin/brew shellenv)"
 fi
 
-# 2. Tools via Brewfile ----------------------------------------------------
+# --- Tools via Brewfile ---
 step "brew bundle"
 brew bundle --file "$REPO_ROOT/Brewfile"
 
-# 2a. Install rustup
+# --- Install rustup ---
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.zshenv
+source ~/.zshenv #resource .env so cargo CLI works
 
-# 2b. Install alacritty via manual build
+#  --- Install alacritty via manual build ---
 git clone https://github.com/alacritty/alacritty /tmp/alacritty
 make -C /tmp/alacritty app
 cp -r /tmp/alacritty/target/release/osx/Alacritty.app /Applications/
 
-# 3. zsh plugins (sourced by ~/.zshrc from ~/.zsh) -------------------------
+# --- zsh plugins (sourced by ~/.zshrc from ~/.zsh) ---
 step "zsh plugins"
 ZSH_DIR="$HOME/.zsh"
 mkdir -p "$ZSH_DIR"
@@ -54,23 +54,11 @@ clone_or_update() { # <repo-url> <dest-name>
 clone_or_update https://github.com/zsh-users/zsh-autosuggestions      zsh-autosuggestions
 clone_or_update https://github.com/zsh-users/zsh-syntax-highlighting  zsh-syntax-highlighting
 
-# 4. Rust toolchain (rustup) ----------------------------------------------
-step "Rust (rustup)"
-if ! command -v rustup >/dev/null 2>&1 && [ ! -x "$HOME/.cargo/bin/rustup" ]; then
-  echo "Installing rustup..."
-  # --no-modify-path: ~/.cargo/bin is added to PATH by our .zshrc instead.
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-else
-  echo "rustup already installed."
-fi
-# Ensure a stable toolchain is present and up to date.
-"$HOME/.cargo/bin/rustup" default stable
-
-# 5. Symlink dotfiles ------------------------------------------------------
+# --- Symlink dotfiles ---
 step "dotfiles"
 "$REPO_ROOT/install/link.sh"
 
-# 6. Default editor --------------------------------------------------------
+# --- Default editor ---
 step "default editor (Zed)"
 "$REPO_ROOT/install/default-editor.sh"
 

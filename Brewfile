@@ -18,6 +18,8 @@ brew "opal-security"
 brew "node"
 brew "make"
 brew "zsh"
+brew "opentofu"
+brew "terraform"
 
 # --- GUI apps (casks) ---
 cask "zed"         # editor
