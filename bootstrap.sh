@@ -30,6 +30,11 @@ fi
 step "brew bundle"
 brew bundle --file "$REPO_ROOT/Brewfile"
 
+# 2b. Install alacritty via manual build
+git clone https://github.com/alacritty/alacritty /tmp/alacritty
+make -C /tmp/alacritty app
+cp -r /tmp/alacritty/target/release/osx/Alacritty.app /Applications/
+
 # 3. zsh plugins (sourced by ~/.zshrc from ~/.zsh) -------------------------
 step "zsh plugins"
 ZSH_DIR="$HOME/.zsh"

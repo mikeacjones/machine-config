@@ -16,6 +16,7 @@ brew "duti"        # set default apps by file type (used to make Zed the default
 brew "git"       # newer git than macOS system git, uncomment if wanted
 brew "opal-security"
 brew "node"
+brew "make"
 
 # --- GUI apps (casks) ---
 cask "zed"         # editor
