@@ -39,6 +39,10 @@ git clone https://github.com/alacritty/alacritty /tmp/alacritty
 make -C /tmp/alacritty app
 cp -r /tmp/alacritty/target/release/osx/Alacritty.app /Applications/
 
+# --- Set up alacritty themes ---
+mkdir -p ~/.config/alacritty/themes
+git clone https://github.com/alacritty/alacritty-theme ~/.config/alacritty/themes
+
 # --- zsh plugins (sourced by ~/.zshrc from ~/.zsh) ---
 step "zsh plugins"
 ZSH_DIR="$HOME/.zsh"
