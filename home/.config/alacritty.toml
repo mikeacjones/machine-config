@@ -19,9 +19,7 @@ decorations = "Full"
 decorations_theme_variant = "Dark"
 padding = { x = 8, y = 8 }
 
-# Launch tmux directly as Alacritty's shell.
-# `new-session -A -s main` = attach to "main" if it exists, else create it.
-# Every Alacritty window drops straight into tmux. Detach with prefix+d.
-#[terminal.shell]
-#program = "/opt/homebrew/bin/tmux"
-#args = ["new-session", "-A", "-s", "main"]
+[general]
+import = [
+    "~/.config/alacritty/themes/themes/tokyo_night.toml"
+]
