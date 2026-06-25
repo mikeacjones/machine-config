@@ -34,6 +34,9 @@ brew bundle --file "$REPO_ROOT/Brewfile"
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.zshenv #resource .env so cargo CLI works
 
+# -- Install just ---
+cargo install just
+
 #  --- Install alacritty via manual build ---
 git clone https://github.com/alacritty/alacritty /tmp/alacritty
 make -C /tmp/alacritty app
