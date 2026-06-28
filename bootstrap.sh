@@ -11,6 +11,15 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 step() { printf '\n\033[1;34m==> %s\033[0m\n' "$1"; }
 
+clone_or_update() { # <repo-url> <dest-path>
+  local url="$1" dest="$2"
+  if [ -d "$dest/.git" ]; then
+    echo "updating $dest"; git -C "$dest" pull --ff-only --quiet
+  else
+    echo "cloning  $url → $dest"; git clone --depth=1 --quiet "$url" "$dest"
+  fi
+}
+
 # --- Homebrew ---
 step "Homebrew"
 if ! command -v brew >/dev/null 2>&1; then
@@ -31,35 +40,40 @@ step "brew bundle"
 brew bundle --file "$REPO_ROOT/Brewfile"
 
 # --- Install rustup ---
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.zshenv #resource .env so cargo CLI works
+if ! command -v rustup >/dev/null 2>&1; then
+  echo "Installing rustup..."
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  source ~/.zshenv
+else
+  echo "Updating rustup..."
+  rustup update
+fi
 
 # -- Install just ---
-cargo install just
+if ! command -v just > /dev/null 2>&1; then
+  echo "Installing just..."
+  cargo install just
+else
+  echo "Updating just..."
+  cargo install just --force
+fi
 
 #  --- Install alacritty via manual build ---
-git clone https://github.com/alacritty/alacritty /tmp/alacritty
+step "Alacritty"
+clone_or_update https://github.com/alacritty/alacritty /tmp/alacritty
 make -C /tmp/alacritty app
 cp -r /tmp/alacritty/target/release/osx/Alacritty.app /Applications/
 
 # --- Set up alacritty themes ---
-mkdir -p ~/.config/alacritty/themes
-git clone https://github.com/alacritty/alacritty-theme ~/.config/alacritty/themes
+mkdir -p ~/.config/alacritty
+clone_or_update https://github.com/alacritty/alacritty-theme ~/.config/alacritty/themes
 
 # --- zsh plugins (sourced by ~/.zshrc from ~/.zsh) ---
 step "zsh plugins"
 ZSH_DIR="$HOME/.zsh"
 mkdir -p "$ZSH_DIR"
-clone_or_update() { # <repo-url> <dest-name>
-  local dest="$ZSH_DIR/$2"
-  if [ -d "$dest/.git" ]; then
-    echo "updating $2"; git -C "$dest" pull --ff-only --quiet
-  else
-    echo "cloning  $2";  git clone --depth=1 --quiet "$1" "$dest"
-  fi
-}
-clone_or_update https://github.com/zsh-users/zsh-autosuggestions      zsh-autosuggestions
-clone_or_update https://github.com/zsh-users/zsh-syntax-highlighting  zsh-syntax-highlighting
+clone_or_update https://github.com/zsh-users/zsh-autosuggestions      "$ZSH_DIR/zsh-autosuggestions"
+clone_or_update https://github.com/zsh-users/zsh-syntax-highlighting  "$ZSH_DIR/zsh-syntax-highlighting"
 
 # --- Symlink dotfiles ---
 step "dotfiles"
@@ -69,9 +83,13 @@ step "dotfiles"
 step "default editor (Zed)"
 "$REPO_ROOT/install/default-editor.sh"
 
-# --- Install claude code ---
-curl -fsSL https://claude.ai/install.sh | bash
-
+# --- Install/update claude code ---
+if ! command -v claude >/dev/null 2>&1; then
+  curl -fsSL https://claude.ai/install.sh | bash
+else
+  echo "Updating claude..."
+  claude update
+fi
 
 step "Done"
 echo "Open a new Alacritty window (you'll land in tmux), or run: exec zsh"
