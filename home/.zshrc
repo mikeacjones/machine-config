@@ -104,7 +104,11 @@ git_prompt_info() {
         [[ -n "$status_flags" ]] && echo -n " %F{red}[$status_flags]%f"
     else
         # Not in a git repo, just show directory name
-        echo -n "%F{cyan}%1~%f"
+        if [[ "${PWD:l}" == "${HOME:l}"* ]]; then
+            echo -n "%F{cyan}%~%f"
+        else
+            echo -n "%F{cyan}%d%f"
+        fi
     fi
 }
 
