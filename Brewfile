@@ -7,7 +7,6 @@ brew "uv"          # python package/proj manager
 brew "gh"          # github cli
 brew "ripgrep"     # fast grep (rg)
 brew "hyperfine"   # benchmarking
-brew "go"          # go toolchain
 brew "awscli"
 brew "duti"        # set default apps by file type (used to make Zed the default editor)
 brew "git"
