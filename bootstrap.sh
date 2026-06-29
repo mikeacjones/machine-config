@@ -39,6 +39,14 @@ fi
 step "brew bundle"
 brew bundle --file "$REPO_ROOT/Brewfile"
 
+# -- Install go ---
+GO_VERSION=$(curl -s "https://go.dev/dl/?mode=json" | jq -r '.[0].version')
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/arm64/arm64/')
+curl -OL "https://go.dev/dl/${GO_VERSION}.darwin-${ARCH}.tar.gz"
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf "${GO_VERSION}.darwin-${ARCH}.tar.gz"
+rm "${GO_VERSION}.darwin-${ARCH}.tar.gz"
+
 # --- Install rustup ---
 if ! command -v rustup >/dev/null 2>&1; then
   echo "Installing rustup..."
