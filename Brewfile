@@ -1,6 +1,9 @@
 # Brewfile — `brew bundle` installs everything listed here.
 # Run via ./bootstrap.sh, or directly: brew bundle --file Brewfile
 
+# -- Taps ---
+tap "opalsecurity/brew", trusted: true
+
 # --- CLI Tools ---
 brew "tmux"        # terminal multiplexer (auto-launched by Alacritty)
 brew "uv"          # python package/proj manager

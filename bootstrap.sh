@@ -100,4 +100,3 @@ else
 fi
 
 step "Done"
-echo "Open a new Alacritty window (you'll land in tmux), or run: exec zsh"
