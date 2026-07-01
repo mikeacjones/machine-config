@@ -14,16 +14,55 @@ family = "Iosevka Term"
 style = "Italic"
 
 [window]
+decorations_theme_variant = "Dark"
 dimensions = { columns = 100, lines = 25 }
 decorations = "Full"
 padding = { x = 8, y = 8 }
+# Make the macOS Option key send Alt/Meta (so <M-1>..<M-4> etc. work in nvim/tmux)
+# instead of typing special characters.
+option_as_alt = "Both"
 
 [general]
 import = [
-    "~/.config/alacritty/themes/themes/alabaster.toml"
+    "~/.config/alacritty/themes/themes/tokyo_night.toml"
 ]
 
 [[keyboard.bindings]]
 key = "Return"
 mods = "Shift"
 chars = "\u001B\r"
+
+# Cmd+1..4 emit the same escape sequence as Alt+1..4 (ESC + digit), so nvim
+# reads them as <M-1>..<M-4> for Harpoon jumps. Cmd is easier to hit than Option.
+[[keyboard.bindings]]
+key = "1"
+mods = "Command"
+chars = "\u001B1"
+
+[[keyboard.bindings]]
+key = "2"
+mods = "Command"
+chars = "\u001B2"
+
+[[keyboard.bindings]]
+key = "3"
+mods = "Command"
+chars = "\u001B3"
+
+[[keyboard.bindings]]
+key = "4"
+mods = "Command"
+chars = "\u001B4"
+
+# Cmd+T sends the tmux prefix (C-b = 0x02) then c: create a new tmux window.
+# Reuses the familiar macOS new-tab chord for tmux windows.
+[[keyboard.bindings]]
+key = "T"
+mods = "Command"
+chars = "\u0002c"
+
+# Auto-start tmux: launch a login zsh (so PATH/brew env is set), then attach to
+# the "main" session or create it if absent. Exiting tmux closes the window.
+[terminal.shell]
+program = "/bin/zsh"
+args = ["-l", "-c", "tmux new-session -A -s main"]

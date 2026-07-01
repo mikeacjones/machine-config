@@ -1,6 +1,6 @@
 # ~/.zshrc — bare setup (no oh-my-zsh)
 
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:/opt/homebrew/opt/mysql-client/bin:$PATH"
 
 # --- history ---
 HISTFILE="$HOME/.zsh_history"

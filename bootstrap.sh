@@ -91,6 +91,10 @@ step "dotfiles"
 step "default editor (Zed)"
 "$REPO_ROOT/install/default-editor.sh"
 
+# --- macOS appearance ---
+step "macOS dark mode"
+osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true'
+
 # --- Install/update claude code ---
 if ! command -v claude >/dev/null 2>&1; then
   curl -fsSL https://claude.ai/install.sh | bash
