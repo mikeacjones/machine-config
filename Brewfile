@@ -19,6 +19,7 @@ brew "zsh"
 brew "helm"
 brew "opentofu"
 brew "minikube"
+brew "nvim"
 brew "derailed/k9s/k9s", trusted: true
 
 # --- Temporal Specific CLIs ---
