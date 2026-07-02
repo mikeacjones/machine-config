@@ -1,7 +1,7 @@
 # ~/.zshrc — bare setup (no oh-my-zsh)
 
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:/opt/homebrew/opt/mysql-client/bin:$PATH"
-
+export GPG_TTY=$(tty)
 # --- history ---
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=50000
