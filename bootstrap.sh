@@ -57,6 +57,15 @@ else
   rustup update
 fi
 
+# -- Install tree-sitter --
+if ! command -v tree-sitter >/dev/null 2>&1; then
+  echo "Installing tree-sitter..."
+  cargo install --locked tree-sitter-cli
+else
+  echo "Updating tree-sitter..."
+  cargo install --locked tree-sitter-cli --force
+fi
+
 # -- Install just ---
 if ! command -v just > /dev/null 2>&1; then
   echo "Installing just..."
