@@ -100,7 +100,7 @@ git_prompt_info() {
         [[ -n "$status_flags" ]] && branch_color="%F{yellow}"
 
         # Output the git info
-        echo -n "$path_display on ${branch_color}$branch%f"
+        echo -n "$path_display ${branch_color}$branch%f"
         [[ -n "$status_flags" ]] && echo -n " %F{red}[$status_flags]%f"
     else
         # Not in a git repo, just show directory name
