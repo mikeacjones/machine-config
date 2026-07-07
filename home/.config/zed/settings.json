@@ -7,6 +7,10 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "jsx_tag_auto_close": {
+    "enabled": false
+  },
+  "use_autoclose": false,
   "vim_mode": true,
   "vim": {
     "toggle_relative_line_numbers": true
