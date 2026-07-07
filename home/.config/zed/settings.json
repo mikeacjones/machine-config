@@ -7,6 +7,10 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "vim_mode": true,
+  "vim": {
+    "toggle_relative_line_numbers": true
+  },
   "agent_servers": {
     "claude-acp": {
       "default_config_options": {
