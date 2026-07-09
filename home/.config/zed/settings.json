@@ -7,6 +7,17 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "hover_popover_enabled": false,
+  "diagnostics": {
+    "inline": {
+      "enabled": false
+    }
+  },
+  "completions": {
+    "lsp": false
+  },
+  "enable_language_server": true,
+  "use_auto_surround": false,
   "jsx_tag_auto_close": {
     "enabled": false
   },
