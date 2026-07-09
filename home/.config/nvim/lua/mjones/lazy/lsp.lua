@@ -99,6 +99,9 @@ return {
         local cmp_select = { behavior = cmp.SelectBehavior.Select }
 
         cmp.setup({
+            completion = {
+                autocomplete = false, -- no popup as you type; use <C-Space> to trigger manually
+            },
             snippet = {
                 expand = function(args)
                     require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
