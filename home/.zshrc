@@ -17,6 +17,10 @@ if [[ -n $ZCOMPDUMP(#qN.mh+24) ]]; then
 else
 	compinit -C -d "$ZCOMPDUMP"
 fi
+
+if [[ ! -f ~/.zcompdump.zwc || ~/.zcompdump -nt ~/.zcompdump.zwc ]]; then
+  zcompile ~/.zcompdump
+fi
 # case-insensitive matching + a completion menu
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
 zstyle ':completion:*' menu select
@@ -31,6 +35,7 @@ source "$HOME/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 alias access-sa-demo="$HOME/.scripts/eks/access-sa-demo-eks-cluster.sh"
 alias la="ls -la"
 alias minikube-temp="$HOME/.scripts/minikube/temp-kube.sh"
+alias vim="nvim"
 
 # --- keybindings ---
 _autosuggest_or_complete() {
