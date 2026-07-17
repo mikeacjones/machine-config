@@ -16,6 +16,7 @@ return {
 				javascript = { "prettier" },
 				typescript = { "prettier" },
 				elixir = { "mix" },
+				cs = { "csharpier" },
 			},
 			formatters = {
 				["clang-format"] = {

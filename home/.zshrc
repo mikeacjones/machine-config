@@ -33,6 +33,12 @@ source "$HOME/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 
 # --- aliases ---
 alias access-sa-demo="$HOME/.scripts/eks/access-sa-demo-eks-cluster.sh"
+# Per-cluster kubectl/k9s wrappers (contexts created by access-sa-demo).
+# Plain kubectl/k9s follow the current-context that access-sa-demo sets.
+alias bluekctl="kubectl --context blue"
+alias greenkctl="kubectl --context green"
+alias bluek9s="k9s --context blue"
+alias greenk9s="k9s --context green"
 alias la="ls -la"
 alias minikube-temp="$HOME/.scripts/minikube/temp-kube.sh"
 alias vim="nvim"
