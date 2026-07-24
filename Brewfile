@@ -29,6 +29,7 @@ brew "opalsecurity/brew/opal-security", trusted: true
 cask "zed"
 cask "docker-desktop"
 cask "rectangle"
+cast "shottr"
 
 # --- Fonts ---
 cask "font-iosevka"
