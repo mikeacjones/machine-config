@@ -28,6 +28,7 @@ brew "opalsecurity/brew/opal-security", trusted: true
 # --- GUI Apps (casks) ---
 cask "zed"
 cask "docker-desktop"
+cask "rectangle"
 
 # --- Fonts ---
 cask "font-iosevka"
