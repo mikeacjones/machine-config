@@ -5,7 +5,7 @@
 tap "opalsecurity/brew", trusted: true
 
 # --- CLI Tools ---
-brew "tmux"        # terminal multiplexer (auto-launched by Alacritty)
+brew "tmux"        # terminal multiplexer
 brew "uv"          # python package/proj manager
 brew "gh"          # github cli
 brew "ripgrep"     # fast grep (rg)
@@ -26,6 +26,7 @@ brew "derailed/k9s/k9s", trusted: true
 brew "opalsecurity/brew/opal-security", trusted: true
 
 # --- GUI Apps (casks) ---
+cask "ghostty"
 cask "zed"
 cask "docker-desktop"
 cask "rectangle"

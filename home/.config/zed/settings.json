@@ -70,7 +70,7 @@
   "theme": {
     "mode": "dark",
     "light": "macOS Classic Light",
-    "dark": "Tokyo Night",
+    "dark": "Monokai-og",
   },
   "buffer_font_features": {
     "calt": false,
