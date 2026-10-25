@@ -14,7 +14,7 @@ git clone https://github.com/mikeacjones/machine-config ~/Source/machine-config
 ## What it does
 
 1. **Homebrew** — installs it if missing.
-2. **Tools** — `brew bundle` from [`Brewfile`](./Brewfile): tmux, uv, gh, ripgrep, hyperfine, go, plus Alacritty, Zed, and the Iosevka font.
+2. **Tools** — `brew bundle` from [`Brewfile`](./Brewfile): tmux, uv, gh, ripgrep, hyperfine, go, plus Ghostty, Zed, and the Iosevka font.
 3. **zsh plugins** — clones `zsh-autosuggestions` and `zsh-syntax-highlighting` into `~/.zsh/` (sourced by `.zshrc`).
 4. **Rust** — installs `rustup` via the official installer (`--no-modify-path`; `~/.cargo/bin` is on PATH via `.zshrc`) and sets the `stable` toolchain.
 5. **Dotfiles** — symlinks everything under [`home/`](./home) into `$HOME` (mirroring the structure), backing up any existing files to `~/.machine-config-backup/<timestamp>/`.
@@ -26,7 +26,7 @@ git clone https://github.com/mikeacjones/machine-config ~/Source/machine-config
 home/                         # mirrors $HOME — anything here gets symlinked in
   .zshrc
   .tmux.conf
-  .config/alacritty/alacritty.toml
+  .config/ghostty/config.ghostty
 Brewfile                      # `brew bundle` tool list
 bootstrap.sh                  # main entrypoint
 install/link.sh               # symlinks home/ -> $HOME
@@ -40,14 +40,12 @@ editing e.g. `~/.zshrc` later edits the repo copy directly — commit and push t
 
 ## Notes
 
-- Terminal: Alacritty launches straight into tmux (`new-session -A -s main`); mouse
-  click-to-focus is on in `.tmux.conf`.
-- `alacritty.toml` hardcodes `/opt/homebrew/bin/tmux` (Apple Silicon brew prefix).
-  On an Intel Mac change it to `/usr/local/bin/tmux`.
+- Terminal: Ghostty (`config.ghostty`, symlinked to `~/.config/ghostty/`). Ghostty also
+  reads `~/Library/Application Support/com.mitchellh.ghostty/config.ghostty`; keep only
+  one so the two don't layer.
 - `.zshrc` has a personal `access-sa-demo` alias pointing at `~/.scripts/...`; that
   script isn't in this repo, so the alias just no-ops until you add it.
-- Font: `font-iosevka` (cask) provides the "Iosevka Term" family used by Alacritty
-  and Zed.
+- Font: `font-iosevka` (cask) provides the "Iosevka Term" family used by Zed.
 - Zed: `settings.json` is symlinked in, and its `auto_install_extensions` block makes
   Zed install csharp, dockerfile, git-firefly, html, macos-classic, mermaid,
   terraform, and toml on first launch. (Zed may rewrite this file via atomic save and

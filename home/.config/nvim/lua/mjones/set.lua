@@ -1,7 +1,7 @@
 vim.opt.guicursor = ""
 
 -- Disable the mouse entirely: clicks no longer move the cursor, so clicks fall
--- through to native Alacritty text selection (default is "nvi" / "a").
+-- through to native Ghostty text selection (default is "nvi" / "a").
 vim.opt.mouse = ""
 
 vim.opt.nu = true
