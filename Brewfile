@@ -26,7 +26,6 @@ brew "derailed/k9s/k9s", trusted: true
 brew "opalsecurity/brew/opal-security", trusted: true
 
 # --- GUI Apps (casks) ---
-cask "ghostty"
 cask "zed"
 cask "docker-desktop"
 cask "rectangle"
