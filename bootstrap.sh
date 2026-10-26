@@ -39,6 +39,20 @@ fi
 step "brew bundle"
 brew bundle --file "$REPO_ROOT/Brewfile"
 
+# --- Install Ghostty (official DMG; the app self-updates after install) ---
+if [ ! -d /Applications/Ghostty.app ]; then
+  echo "Installing Ghostty..."
+  GHOSTTY_DMG_URL=$(curl -fsSL https://ghostty.org/download | grep -oE 'https://release\.files\.ghostty\.org/[^"]+/Ghostty\.dmg' | head -1)
+  GHOSTTY_TMP=$(mktemp -d)
+  curl -fsSL -o "$GHOSTTY_TMP/Ghostty.dmg" "$GHOSTTY_DMG_URL"
+  hdiutil attach -nobrowse -quiet -mountpoint "$GHOSTTY_TMP/mnt" "$GHOSTTY_TMP/Ghostty.dmg"
+  cp -R "$GHOSTTY_TMP/mnt/Ghostty.app" /Applications/
+  hdiutil detach -quiet "$GHOSTTY_TMP/mnt"
+  rm -rf "$GHOSTTY_TMP"
+else
+  echo "Ghostty already installed."
+fi
+
 # -- Install go ---
 GO_VERSION=$(curl -s "https://go.dev/dl/?mode=json" | jq -r '.[0].version')
 ARCH=$(uname -m | sed 's/x86_64/amd64/;s/arm64/arm64/')
