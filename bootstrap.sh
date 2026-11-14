@@ -53,15 +53,7 @@ else
   echo "Ghostty already installed."
 fi
 
-# -- Install go ---
-GO_VERSION=$(curl -s "https://go.dev/dl/?mode=json" | jq -r '.[0].version')
-ARCH=$(uname -m | sed 's/x86_64/amd64/;s/arm64/arm64/')
-curl -OL "https://go.dev/dl/${GO_VERSION}.darwin-${ARCH}.tar.gz"
-sudo rm -rf /usr/local/go
-sudo tar -C /usr/local -xzf "${GO_VERSION}.darwin-${ARCH}.tar.gz"
-rm "${GO_VERSION}.darwin-${ARCH}.tar.gz"
-
-# --- Install rustup ---
+# --- Install rustup (Go, just and tree-sitter-cli come from the Brewfile) ---
 if ! command -v rustup >/dev/null 2>&1; then
   echo "Installing rustup..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -70,24 +62,9 @@ else
   echo "Updating rustup..."
   rustup update
 fi
-
-# -- Install tree-sitter --
-if ! command -v tree-sitter >/dev/null 2>&1; then
-  echo "Installing tree-sitter..."
-  cargo install --locked tree-sitter-cli
-else
-  echo "Updating tree-sitter..."
-  cargo install --locked tree-sitter-cli --force
-fi
-
-# -- Install just ---
-if ! command -v just > /dev/null 2>&1; then
-  echo "Installing just..."
-  cargo install just
-else
-  echo "Updating just..."
-  cargo install just --force
-fi
+# Language server for Claude Code's rust-analyzer-lsp plugin. rustup's
+# ~/.cargo/bin/rust-analyzer proxy only works once the component is installed.
+PATH="$HOME/.cargo/bin:$PATH" rustup component add rust-analyzer
 
 # --- zsh plugins (sourced by ~/.zshrc from ~/.zsh) ---
 step "zsh plugins"
@@ -115,5 +92,30 @@ else
   echo "Updating claude..."
   claude update
 fi
+
+# --- Claude Code plugins ---
+# ~/.claude/settings.json is symlinked from home/.claude/settings.json, so it
+# already declares which plugins are enabled. Declaring isn't enough on a new
+# machine: each marketplace has to be cloned and each plugin downloaded.
+step "Claude Code plugins"
+export PATH="$HOME/.local/bin:$PATH" # where the installer puts `claude`
+CLAUDE_SETTINGS="$REPO_ROOT/home/.claude/settings.json"
+# </dev/null: `claude` would otherwise wait on, or swallow, the script's stdin.
+for marketplace in $(jq -r '.extraKnownMarketplaces // {} | .[] | select(.source.source == "github") | .source.repo' "$CLAUDE_SETTINGS"); do
+  claude plugin marketplace add "$marketplace" </dev/null
+done
+for plugin in $(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == true) | .key' "$CLAUDE_SETTINGS"); do
+  claude plugin install "$plugin" --scope user </dev/null
+done
+
+# --- Machine-local secrets (tokens for the claude / claude2 shell functions) ---
+step ".env"
+if [ ! -f "$REPO_ROOT/.env" ]; then
+  cp "$REPO_ROOT/.env.example" "$REPO_ROOT/.env"
+  echo "Created $REPO_ROOT/.env — fill in the values (see the comments inside)."
+else
+  echo ".env already exists."
+fi
+chmod 600 "$REPO_ROOT/.env"
 
 step "Done"

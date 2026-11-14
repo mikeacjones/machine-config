@@ -125,3 +125,36 @@ git_prompt_info() {
 
 # Set the prompt
 PROMPT='$(git_prompt_info) %F{magenta}❯%f '
+
+# -- Claude Code accounts --
+# `claude` and `claude2` share ~/.claude but can sign in as different accounts.
+# Tokens come from the machine-config repo's .env (see .env.example), found by
+# resolving this file's symlink back into the repo. A token is read on each run
+# and passed to that one process; it is never exported into the shell.
+MACHINE_CONFIG_ENV="${${(%):-%x}:A:h:h}/.env"
+
+_claude_token() { # <VAR> — print VAR's value from .env
+  [[ -r "$MACHINE_CONFIG_ENV" ]] || return 0
+  ( source "$MACHINE_CONFIG_ENV" && print -rn -- "${(P)1}" ) 2>/dev/null
+}
+
+# Primary account: uses CLAUDE_OAUTH_TOKEN if set, otherwise the normal login.
+claude() {
+  local token="$(_claude_token CLAUDE_OAUTH_TOKEN)"
+  if [[ -n "$token" ]]; then
+    CLAUDE_CODE_OAUTH_TOKEN="$token" command claude "$@"
+  else
+    command claude "$@"
+  fi
+}
+
+# Second account: CLAUDE2_OAUTH_TOKEN, falling back to the macOS Keychain.
+claude2() {
+  local token="$(_claude_token CLAUDE2_OAUTH_TOKEN)"
+  [[ -n "$token" ]] || token="$(security find-generic-password -a "$USER" -s claude2-oauth-token -w 2>/dev/null)"
+  if [[ -z "$token" ]]; then
+    print -u2 "claude2: set CLAUDE2_OAUTH_TOKEN in $MACHINE_CONFIG_ENV (see .env.example)"
+    return 1
+  fi
+  CLAUDE_CODE_OAUTH_TOKEN="$token" command claude "$@"
+}

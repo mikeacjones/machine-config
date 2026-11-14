@@ -20,6 +20,14 @@ brew "helm"
 brew "opentofu"
 brew "minikube"
 brew "nvim"
+brew "go"
+brew "just"        # command runner
+brew "tree-sitter-cli"
+brew "jq"          # used by bootstrap.sh / update.sh to read Claude settings
+
+# --- Language servers (used by Claude Code's LSP plugins; rust-analyzer comes from rustup) ---
+brew "gopls"
+brew "pyright"
 brew "derailed/k9s/k9s", trusted: true
 
 # --- Temporal Specific CLIs ---
