@@ -41,7 +41,6 @@ alias bluek9s="k9s --context blue"
 alias greenk9s="k9s --context green"
 alias la="ls -la"
 alias minikube-temp="$HOME/.scripts/minikube/temp-kube.sh"
-alias vim="nvim"
 
 # --- keybindings ---
 _autosuggest_or_complete() {

@@ -3,7 +3,7 @@
 #   ~/Source/machine-config/update.sh
 #
 # Idempotent: only what is actually out of date gets touched, so a re-run with
-# nothing to do is a fast no-op. Most tools (Go, just, tree-sitter-cli, ...) come
+# nothing to do is a fast no-op. Most tools (Go, just, ...) come
 # from the Brewfile and are covered by the Homebrew section.
 # Upgrade-only: anything bootstrap.sh hasn't installed yet is reported and
 # skipped. Sections are independent — a failure in one is reported at the end

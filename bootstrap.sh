@@ -53,7 +53,7 @@ else
   echo "Ghostty already installed."
 fi
 
-# --- Install rustup (Go, just and tree-sitter-cli come from the Brewfile) ---
+# --- Install rustup (Go and just come from the Brewfile) ---
 if ! command -v rustup >/dev/null 2>&1; then
   echo "Installing rustup..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
