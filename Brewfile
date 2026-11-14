@@ -20,6 +20,9 @@ brew "helm"
 brew "opentofu"
 brew "minikube"
 brew "nvim"
+brew "go"
+brew "just"        # command runner
+brew "tree-sitter-cli"
 brew "derailed/k9s/k9s", trusted: true
 
 # --- Temporal Specific CLIs ---
