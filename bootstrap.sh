@@ -53,15 +53,7 @@ else
   echo "Ghostty already installed."
 fi
 
-# -- Install go ---
-GO_VERSION=$(curl -s "https://go.dev/dl/?mode=json" | jq -r '.[0].version')
-ARCH=$(uname -m | sed 's/x86_64/amd64/;s/arm64/arm64/')
-curl -OL "https://go.dev/dl/${GO_VERSION}.darwin-${ARCH}.tar.gz"
-sudo rm -rf /usr/local/go
-sudo tar -C /usr/local -xzf "${GO_VERSION}.darwin-${ARCH}.tar.gz"
-rm "${GO_VERSION}.darwin-${ARCH}.tar.gz"
-
-# --- Install rustup ---
+# --- Install rustup (Go, just and tree-sitter-cli come from the Brewfile) ---
 if ! command -v rustup >/dev/null 2>&1; then
   echo "Installing rustup..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -69,24 +61,6 @@ if ! command -v rustup >/dev/null 2>&1; then
 else
   echo "Updating rustup..."
   rustup update
-fi
-
-# -- Install tree-sitter --
-if ! command -v tree-sitter >/dev/null 2>&1; then
-  echo "Installing tree-sitter..."
-  cargo install --locked tree-sitter-cli
-else
-  echo "Updating tree-sitter..."
-  cargo install --locked tree-sitter-cli --force
-fi
-
-# -- Install just ---
-if ! command -v just > /dev/null 2>&1; then
-  echo "Installing just..."
-  cargo install just
-else
-  echo "Updating just..."
-  cargo install just --force
 fi
 
 # --- zsh plugins (sourced by ~/.zshrc from ~/.zsh) ---
