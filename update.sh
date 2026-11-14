@@ -92,10 +92,25 @@ update_claude() {
   claude update
 }
 
+# --- Claude Code plugins (whatever is installed at user scope) ---
+update_claude_plugins() {
+  have claude || { skip "claude not found"; return 0; }
+  have jq || { skip "jq not found"; return 0; }
+  local plugins plugin
+  # </dev/null: `claude` would otherwise wait on, or swallow, the script's stdin.
+  plugins=$(claude plugin list --json </dev/null | jq -r '.[] | select(.scope == "user") | .id')
+  [ -n "$plugins" ] || { skip "no Claude Code plugins installed"; return 0; }
+  claude plugin marketplace update </dev/null
+  for plugin in $plugins; do
+    claude plugin update "$plugin" </dev/null
+  done
+}
+
 section "Homebrew"     update_homebrew
 section "Rust"         update_rust
 section "zsh plugins"  update_zsh_plugins
 section "Claude Code"  update_claude
+section "Claude Code plugins" update_claude_plugins
 
 if [ "${#FAILED[@]}" -gt 0 ]; then
   step "Done, with failures"
