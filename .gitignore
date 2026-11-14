@@ -1,3 +1,4 @@
 .DS_Store
 .machine-config-backup/
 *.swp
+.env
