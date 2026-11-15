@@ -2,6 +2,13 @@
 
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:/opt/homebrew/opt/mysql-client/bin:$PATH"
 export GPG_TTY=$(tty)
+
+# --- ssh agent ---
+# macOS starts its ssh-agent empty at every login. Load the keys whose passphrases are in
+# the Keychain when it holds none, so git's SSH commit signing (ssh-keygen -Y sign) finds
+# the key in the agent instead of stopping to ask for a passphrase. Apple's ssh-add only.
+/usr/bin/ssh-add -l >/dev/null 2>&1 || /usr/bin/ssh-add --apple-load-keychain >/dev/null 2>&1
+
 # --- history ---
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=50000
@@ -122,8 +129,14 @@ git_prompt_info() {
     fi
 }
 
+# Session marker: shows [SSH] when this shell was reached over SSH, so a
+# remote prompt is never mistaken for a local one.
+session_info() {
+    [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]] && echo -n "%F{yellow}[SSH]%f "
+}
+
 # Set the prompt
-PROMPT='$(git_prompt_info) %F{magenta}❯%f '
+PROMPT='$(session_info)$(git_prompt_info) %F{magenta}❯%f '
 
 # -- Claude Code accounts --
 # `claude` and `claude2` share ~/.claude but can sign in as different accounts.
