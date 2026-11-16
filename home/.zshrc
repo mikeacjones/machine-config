@@ -3,6 +3,12 @@
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:/opt/homebrew/opt/mysql-client/bin:$PATH"
 export GPG_TTY=$(tty)
 
+# --- terminal type ---
+# Ghostty sets TERM=xterm-ghostty, and ssh passes it to hosts that may have no
+# terminfo for it. zsh then can't move the cursor, so every line redraw is
+# appended ("eexitexexxi..."). Fall back to a type every host knows.
+infocmp "$TERM" &>/dev/null || export TERM=xterm-256color
+
 # --- ssh agent ---
 # macOS starts its ssh-agent empty at every login. Load the keys whose passphrases are in
 # the Keychain when it holds none, so git's SSH commit signing (ssh-keygen -Y sign) finds
