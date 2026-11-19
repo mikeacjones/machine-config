@@ -1,5 +1,6 @@
 theme = "Monokai Classic"
 window-theme = light
+font-family = "Iosevka Fixed"
 font-size = 18
 
 # Over ssh, send TERM=xterm-256color instead of xterm-ghostty, since remote hosts
