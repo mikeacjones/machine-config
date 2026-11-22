@@ -155,34 +155,35 @@ session_info() {
 PROMPT='$(session_info)$(git_prompt_info) %F{magenta}❯%f '
 
 # -- Claude Code accounts --
-# `claude` and `claude2` share ~/.claude but can sign in as different accounts.
-# Tokens come from the machine-config repo's .env (see .env.example), found by
-# resolving this file's symlink back into the repo. A token is read on each run
-# and passed to that one process; it is never exported into the shell.
-MACHINE_CONFIG_ENV="${${(%):-%x}:A:h:h}/.env"
+# `claude`, `claude2` and `claude3` each sign in with the normal /login, which
+# keeps that account's credentials in the macOS Keychain. Claude Code stores the
+# login per config directory, so claude2/claude3 each get a small directory under
+# ~/.claude-accounts/ that holds only the login and per-account state. Everything
+# shared (memory, skills, settings, plugins, hooks, rules, history) is a symlink
+# back to ~/.claude, so there is still one place to edit.
+CLAUDE_ACCOUNTS_DIR="$HOME/.claude-accounts"
+CLAUDE_SHARED_DIRS=(projects skills plugins hooks rules agents commands output-styles plans todos file-history)
+CLAUDE_SHARED_FILES=(CLAUDE.md settings.json settings.local.json keybindings.json history.jsonl)
 
-_claude_token() { # <VAR> — print VAR's value from .env
-  [[ -r "$MACHINE_CONFIG_ENV" ]] || return 0
-  ( source "$MACHINE_CONFIG_ENV" && print -rn -- "${(P)1}" ) 2>/dev/null
+_claude_account_dir() { # <name> — create/repair ~/.claude-accounts/<name>, print its path
+  local dir="$CLAUDE_ACCOUNTS_DIR/$1" item
+  mkdir -p "$dir"
+  for item in $CLAUDE_SHARED_DIRS; do
+    mkdir -p "$HOME/.claude/$item"
+    [[ -e "$dir/$item" || -L "$dir/$item" ]] || ln -s "$HOME/.claude/$item" "$dir/$item"
+  done
+  for item in $CLAUDE_SHARED_FILES; do
+    [[ -e "$HOME/.claude/$item" ]] || continue
+    [[ -e "$dir/$item" || -L "$dir/$item" ]] || ln -s "$HOME/.claude/$item" "$dir/$item"
+  done
+  for item in $CLAUDE_SHARED_DIRS $CLAUDE_SHARED_FILES; do
+    [[ -e "$dir/$item" && ! -L "$dir/$item" ]] && print -u2 "claude: $dir/$item is a real file, not shared with ~/.claude"
+  done
+  print -rn -- "$dir"
 }
 
-# Primary account: uses CLAUDE_OAUTH_TOKEN if set, otherwise the normal login.
-claude() {
-  local token="$(_claude_token CLAUDE_OAUTH_TOKEN)"
-  if [[ -n "$token" ]]; then
-    CLAUDE_CODE_OAUTH_TOKEN="$token" command claude "$@"
-  else
-    command claude "$@"
-  fi
-}
+# Primary account: the default ~/.claude and its Keychain login.
+(( $+functions[claude] )) && unfunction claude
 
-# Second account: CLAUDE2_OAUTH_TOKEN, falling back to the macOS Keychain.
-claude2() {
-  local token="$(_claude_token CLAUDE2_OAUTH_TOKEN)"
-  [[ -n "$token" ]] || token="$(security find-generic-password -a "$USER" -s claude2-oauth-token -w 2>/dev/null)"
-  if [[ -z "$token" ]]; then
-    print -u2 "claude2: set CLAUDE2_OAUTH_TOKEN in $MACHINE_CONFIG_ENV (see .env.example)"
-    return 1
-  fi
-  CLAUDE_CODE_OAUTH_TOKEN="$token" command claude "$@"
-}
+claude2() { CLAUDE_CONFIG_DIR="$(_claude_account_dir claude2)" command claude "$@" }
+claude3() { CLAUDE_CONFIG_DIR="$(_claude_account_dir claude3)" command claude "$@" }

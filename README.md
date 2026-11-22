@@ -54,20 +54,28 @@ plugin caches, account-synced skills) is machine state and stays out of the repo
   `bootstrap.sh` installs whatever that file enables.
 - **Personal skills** — none yet. Put one at `home/.claude/skills/<name>/SKILL.md`.
 
-### `claude` and `claude2`
+### `claude`, `claude2` and `claude3`
 
-`.zshrc` defines two shell functions that share `~/.claude` but can sign in as different
-accounts. Each reads its token from `.env` in this repo on every run and passes it to
-that one process; nothing is exported into the shell.
+Each command signs in with the normal interactive login (`/login`), which keeps that
+account's credentials in the macOS Keychain. Claude Code stores the login per config
+directory, so `.zshrc` gives `claude2` and `claude3` their own `CLAUDE_CONFIG_DIR` under
+`~/.claude-accounts/<name>/`:
+
+- **Per account:** the login, `.claude.json` (account, onboarding, user-scope MCP
+  servers), sessions and caches.
+- **Shared, symlinked to `~/.claude`:** `projects/` (transcripts and auto memory),
+  `skills/`, `plugins/`, `hooks/`, `rules/`, `agents/`, `commands/`, `plans/`,
+  `CLAUDE.md`, `settings*.json` and `history.jsonl`. Edit them in `~/.claude`.
+
+The functions create and repair those links on every run. First use per account:
 
 ```sh
-claude setup-token        # prints a long-lived token; run once per account
-$EDITOR .env              # paste into CLAUDE_OAUTH_TOKEN / CLAUDE2_OAUTH_TOKEN
+claude2    # then /login with the second account
+claude3    # then /login with the third account
 ```
 
-- `claude` uses `CLAUDE_OAUTH_TOKEN`, or the normal interactive login if it is empty.
-- `claude2` uses `CLAUDE2_OAUTH_TOKEN`, falling back to a macOS Keychain item named
-  `claude2-oauth-token`.
+An MCP server added with `claude mcp add --scope user` goes into that account's
+`.claude.json` only. Add it to each account, or use project-scope `.mcp.json`.
 
 ## Layout
 
