@@ -84,7 +84,6 @@ home/                         # mirrors $HOME — anything here gets symlinked i
   .zshrc
   .tmux.conf
   .config/ghostty/config.ghostty
-  .warp/keybindings.yaml        # Warp: Tab accepts autosuggestions
   .claude/                    # global Claude Code settings, hooks and rules
 Brewfile                      # `brew bundle` tool list
 bootstrap.sh                  # main entrypoint
@@ -104,9 +103,6 @@ editing e.g. `~/.zshrc` later edits the repo copy directly — commit and push t
 - Terminal: Ghostty (`config.ghostty`, symlinked to `~/.config/ghostty/`). Ghostty also
   reads `~/Library/Application Support/com.mitchellh.ghostty/config.ghostty`; keep only
   one so the two don't layer.
-- Warp: only `keybindings.yaml` is in the repo (Tab accepts the inline autosuggestion;
-  completions are on Ctrl-Space). Warp reads it only at launch, so restart Warp after
-  editing. `~/.warp/settings.toml` stays machine-local.
 - `.zshrc` has a personal `access-sa-demo` alias pointing at `~/.scripts/...`; that
   script isn't in this repo, so the alias just no-ops until you add it.
 - Font: `font-iosevka` (cask) provides the "Iosevka Term" family used by Zed.

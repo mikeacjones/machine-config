@@ -1,5 +1,0 @@
-# Warp keybindings (Warp reads this only at launch: restart Warp after editing).
-# Tab accepts the inline autosuggestion, like Settings > Features > "Tab key behavior"
-# = "Accept autosuggestion". Right arrow still accepts too; completions move to Ctrl-Space.
-"editor_view:insert_autosuggestion": tab
-"input:open_completion_suggestions": ctrl-space
