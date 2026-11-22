@@ -29,9 +29,41 @@ what is actually out of date. It never installs anything new or changes settings
 3. **zsh plugins** — clones `zsh-autosuggestions` and `zsh-syntax-highlighting` into `~/.zsh/` (sourced by `.zshrc`).
 4. **Rust** — installs `rustup` via the official installer (`--no-modify-path`; `~/.cargo/bin` is on PATH via `.zshrc`) and sets the `stable` toolchain, then adds the `rust-analyzer` component.
 5. **Dotfiles** — symlinks everything under [`home/`](./home) into `$HOME` (mirroring the structure), backing up any existing files to `~/.machine-config-backup/<timestamp>/`.
-6. **Default editor** — [`install/default-editor.sh`](./install/default-editor.sh) uses `duti` to make Zed the default app for text/source-code file types.
-7. **Claude Code** — installs it, then adds the plugin marketplaces and installs the plugins that [`home/.claude/settings.json`](./home/.claude/settings.json) enables (see [Claude Code](#claude-code)).
-8. **`.env`** — copies [`.env.example`](./.env.example) to `.env` (gitignored, mode 600) if it doesn't exist yet.
+6. **Herdr** — [`install/herdr.sh`](./install/herdr.sh) installs the Herdr app (official DMG) and the `herdr` CLI (official installer) if missing, copies our Herdr setup from [`herdr/`](./herdr) into `~/.config/herdr-app/`, and makes our layout the one Herdr shows (see [Herdr](#herdr)).
+7. **Default editor** — [`install/default-editor.sh`](./install/default-editor.sh) uses `duti` to make Zed the default app for text/source-code file types.
+8. **Claude Code** — installs it, then adds the plugin marketplaces and installs the plugins that [`home/.claude/settings.json`](./home/.claude/settings.json) enables (see [Claude Code](#claude-code)).
+9. **`.env`** — copies [`.env.example`](./.env.example) to `.env` (gitignored, mode 600) if it doesn't exist yet.
+
+## Herdr
+
+Our Herdr setup lives in [`herdr/`](./herdr), mirroring `~/.config/herdr-app/`:
+
+- `layouts/beads.json` — the layout Herdr shows by default: square corners, one background
+  color, no borders between same-colored areas, and the beads panel on the right.
+- `themes/modus-vivendi.json` / `themes/modus-operandi.json` — the Modus themes (dark / light),
+  colors from Protesilaos's palette.
+- `settings.json` — font, theme (follows the system's light/dark mode), contrast.
+- `mods/` — our own mods: `beads` (the beads panel), `agents-plus` (agents list, usage
+  cards, and the beads panel's show/hide), and our copies of Herdr's built-in mods with
+  our changes (`*-square`). Copies of built-in mods don't get Herdr's updates.
+
+These are **copied, not symlinked**. Herdr's live reload doesn't follow symlinks: an edit
+through a symlinked file or folder is never picked up. So the real files live in
+`~/.config/herdr-app/`, and you change them there (Herdr reloads as you save).
+
+```sh
+install/herdr.sh capture                 # bring changes from ~/.config/herdr-app into herdr/, then commit
+install/herdr.sh capture mods/new-mod    # start tracking something new
+install/herdr.sh install                 # apply herdr/ to this machine (bootstrap.sh runs this)
+install/herdr.sh install --force         # also replace local files that differ from herdr/
+```
+
+`install` only adds files this machine is missing. A local file that differs from `herdr/`
+may be a newer edit not captured yet, so it's listed, not replaced: `capture` keeps this
+machine's version, `install --force` takes the repo's (pulling in changes made on another
+machine), backing up each replaced file to
+`~/.machine-config-backup/<timestamp>/.config/herdr-app/`. Neither ever deletes files, so
+Herdr's own files and state are left alone.
 
 ## Claude Code
 

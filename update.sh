@@ -9,7 +9,7 @@
 # skipped. Sections are independent — a failure in one is reported at the end
 # instead of aborting the rest.
 #
-# Not handled here because they update themselves: Ghostty, and the Brewfile's
+# Not handled here because they update themselves: Ghostty, Herdr.app, and the Brewfile's
 # self-updating apps (Zed, Docker Desktop, Rectangle, Shottr).
 set -uo pipefail
 
@@ -86,6 +86,12 @@ update_zsh_plugins() {
   [ "$found" -eq 1 ] || skip "no plugins found in ~/.zsh"
 }
 
+# --- herdr CLI (Herdr.app downloads its own updates) ---
+update_herdr() {
+  have herdr || { skip "herdr not found"; return 0; }
+  herdr update </dev/null
+}
+
 # --- Claude Code ---
 update_claude() {
   have claude || { skip "claude not found"; return 0; }
@@ -109,6 +115,7 @@ update_claude_plugins() {
 section "Homebrew"     update_homebrew
 section "Rust"         update_rust
 section "zsh plugins"  update_zsh_plugins
+section "herdr CLI"    update_herdr
 section "Claude Code"  update_claude
 section "Claude Code plugins" update_claude_plugins
 

@@ -77,6 +77,10 @@ clone_or_update https://github.com/zsh-users/zsh-syntax-highlighting  "$ZSH_DIR/
 step "dotfiles"
 "$REPO_ROOT/install/link.sh"
 
+# --- Herdr (app + CLI) and our Herdr setup from herdr/ ---
+step "Herdr"
+"$REPO_ROOT/install/herdr.sh" install
+
 # --- Default editor ---
 step "default editor (Zed)"
 "$REPO_ROOT/install/default-editor.sh"

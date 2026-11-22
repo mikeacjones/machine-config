@@ -187,3 +187,7 @@ _claude_account_dir() { # <name> — create/repair ~/.claude-accounts/<name>, pr
 
 claude2() { CLAUDE_CONFIG_DIR="$(_claude_account_dir claude2)" command claude "$@" }
 claude3() { CLAUDE_CONFIG_DIR="$(_claude_account_dir claude3)" command claude "$@" }
+
+# beads: in a herdr terminal, claim beads as <git user>@<terminal> (e.g. mikeacjones@t3)
+# so the herdr beads layout can tell which agent holds which bead.
+[ -n "$HC_TERMINAL_ID" ] && [ -z "$BEADS_ACTOR" ] && export BEADS_ACTOR="$(git config --global user.name)@$HC_TERMINAL_ID"
