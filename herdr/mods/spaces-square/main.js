@@ -6,7 +6,7 @@
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle } from "gpui-base";
 import { spaces, machines, panes, run, openOverlay, exec, hc, theme, settings, shared, setShared, watchFolder, window, layout, focused, setAgentOrder, props, checking } from "herdr";
-import { agentRows, groupHeader } from "./agents.js";
+import { agentRows, familyCard } from "./agents.js";
 import { Probe, accountCards, followBeads } from "./extras.js";
 
 function find(node, id) {
@@ -359,18 +359,27 @@ export default class Spaces extends View {
   // The rows, under a header per machine once one isn't this computer.
   grouped(t, collapsed) {
     const rows = this.ordered();
-    // A space with agents: its name as a header over them, as the agents list grouped them.
-    // A space without: its row.
-    const draw = (r) => {
-      if (collapsed) return [this.compact(r, t)];
-      const members = this.agents?.members.get(r.w.id);
-      if (!members?.length) return [this.row(r, t)];
-      return [groupHeader(this, t, r.w, members), ...(this.agentFolded.has(`sp-${r.w.id}`) ? [] : this.agents.rows.get(r.w.id))];
+    // A repo's spaces (its main checkout, then its worktrees) are one family. A family
+    // with agents in any of its spaces is one panel (agents.js); one without, its rows.
+    const families = (rs) => {
+      const out = [];
+      for (const r of rs) { if (r.tree && out.length) out.at(-1).push(r); else out.push([r]); }
+      return out;
     };
     const flat = (rs) => {
       const out = [];
       let at = -1;
-      for (const r of rs) { if (r.w.active) at = out.length; out.push(...draw(r)); }
+      for (const fam of families(rs)) {
+        if (!collapsed && fam.some((r) => this.agents?.members.get(r.w.id)?.length)) {
+          if (fam.some((r) => r.w.active)) at = out.length;
+          out.push(familyCard(this, t, fam));
+          continue;
+        }
+        for (const r of fam) {
+          if (r.w.active) at = out.length;
+          out.push(collapsed ? this.compact(r, t) : this.row(r, t));
+        }
+      }
       return { out, at };
     };
     // Where the active space's row lands among the children this returns: the list scrolls by its direct

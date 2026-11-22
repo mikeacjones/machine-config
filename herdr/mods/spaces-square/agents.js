@@ -3,7 +3,7 @@
 // by the beads it holds (extras.js) and its live sub-agents.
 
 import { div, image, svg } from "gpui-kit";
-import { h_flex } from "gpui-base";
+import { h_flex, v_flex } from "gpui-base";
 import { agents, terminals, panes, spaces, run } from "herdr";
 import { beadLines } from "./extras.js";
 
@@ -94,26 +94,65 @@ function track(v, list, now) {
 // Every space's agent rows: { rows: spaceId -> elements, members: spaceId -> agents,
 // focused: ids of spaces whose agent has the focus }. `v` is the Spaces view (state:
 // changed, agentFolded, probe).
-// A space's header over its agents, as the agents list grouped them: the space's name
-// (it folds the group); folded, how many agents and the most urgent state.
-export function groupHeader(v, t, w, members) {
-  const id = `sp-${w.id}`;
+// A repo's spaces with agents, framed like a terminal pane: a 1px border (the accent when
+// one of its spaces is shown, as a focused pane's is) and a 30px header like the pane
+// header with the main space's name; its chevron folds the panel, a click shows the
+// space, right-click is its menu. Inside, a sub-header per checkout (the main one, then
+// each worktree): the branch icon and the branch (a worktree: its name), then that space's agents.
+// A space outside any repo has no sub-header: its agents sit right under the header.
+export function familyCard(v, t, fam) {
+  const main = fam[0].w;
+  const id = `sp-${main.id}`;
   const open = !v.agentFolded.has(id);
-  const top = members.reduce((m, a) => ((RANK[a.status] ?? 0) > (RANK[m] ?? 0) ? a.status : m), null);
-  return h_flex().id(`group-${w.id}`).px(8).pt(8).h(30).flex_none().gap(6).items_center()
-    .text_size(11).font_medium().cursor_pointer()
-    .hover((s) => s.text_color(t.foreground))
-    .on_click((_e, cx) => {
-      open ? v.agentFolded.add(id) : v.agentFolded.delete(id);
-      cx.notify();
-    })
-    .on_mouse_down("right", () => v.menu(w))
-    .child(div().truncate().text_color(t.dim).child(w.name))
-    .when(!open, (el) => el.child(div().text_color(t.dim).child(String(members.length))))
-    .child(div().flex_1())
+  const all = fam.flatMap((r) => v.agents.members.get(r.w.id) ?? []);
+  const top = all.reduce((m, a) => ((RANK[a.status] ?? 0) > (RANK[m] ?? 0) ? a.status : m), null);
+  const head = h_flex().id(`group-${main.id}`).h(30).flex_none().px(10).gap(8).items_center()
+    .bg(t.background).when(open, (el) => el.border_b(1).border_color(t.border)).text_size(12)
+    .cursor_pointer().hover((s) => s.bg(t.hover))
+    .on_click(() => run("space.select", { id: main.id }))
+    .on_mouse_down("right", () => v.menu(main))
+    .child(div().flex_1().min_w(0).truncate().font_medium().text_color(t.foreground).child(main.name))
     .when(!open, (el) => el
-      .when(Boolean(top) && top !== "idle", (el) => el.child(statusMark(t, { status: top })))
-      .child(svg("mods/workspace-chrome/chevron-right.svg").size(11).flex_none().text_color(t.dim)));
+      .child(div().flex_none().text_color(t.dim).child(String(all.length)))
+      .when(Boolean(top) && top !== "idle", (el) => el.child(statusMark(t, { status: top }))))
+    .child(div().id(`group-fold-${main.id}`).flex_none().p(3).rounded(0).text_color(t.dim)
+      .hover((s) => s.bg(t.hover).text_color(t.foreground))
+      .tooltip(open ? "Fold" : "Unfold")
+      .on_click((_e, cx) => {
+        cx.stop_propagation();
+        open ? v.agentFolded.add(id) : v.agentFolded.delete(id);
+        cx.notify();
+      })
+      .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(12)));
+
+  const same = (a, b) => String(a ?? "").toLowerCase() === String(b ?? "").toLowerCase();
+  const body = fam.flatMap((r, n) => {
+    const { w, g } = r;
+    const rows = v.agents.rows.get(w.id) ?? [];
+    if (!g && fam.length === 1) return rows; // not a repo, no worktrees: nothing to say
+    // Main checkout: its branch. A worktree: the space's name (usually the branch), and the
+    // branch when it differs.
+    const branch = g?.branch ?? (g ? "detached" : null);
+    const label = r.tree ? w.name : branch ?? w.name;
+    const extra = r.tree && branch && !same(branch, w.name) ? branch : null;
+    const sub = h_flex().id(`checkout-${w.id}`).h(26).flex_none().px(10).gap(7).items_center().text_size(12)
+      .when(n > 0, (el) => el.border_t(1).border_color(t.border))
+      .cursor_pointer().hover((s) => s.bg(t.hover))
+      .on_click(() => run("space.select", { id: w.id }))
+      .on_mouse_down("right", () => v.menu(w))
+      .child(svg("mods/workspace-chrome/branch.svg").size(12).flex_none().text_color(w.active ? t.accent : t.dim))
+      .child(div().flex_none().max_w(150).truncate().text_color(w.active ? t.accent : t.foreground).child(label))
+      .when(Boolean(extra), (el) => el.child(div().flex_1().min_w(0).truncate().text_color(t.dim).child(extra)))
+      .when(!extra, (el) => el.child(div().flex_1()))
+      .when(g?.ahead > 0, (el) => el.child(div().flex_none().text_color(t.ansi2).child(`\u2191${g.ahead}`)))
+      .when(g?.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`)));
+    return [sub, ...rows];
+  });
+
+  return v_flex().id(`card-${main.id}`).flex_none().my(4)
+    .border(1).border_color(fam.some((r) => r.w.active) ? t.accent : t.border).bg(t.background)
+    .child(head)
+    .when(open, (el) => el.child(v_flex().pb(2).children(body)));
 }
 
 export function agentRows(v, t, cx) {
