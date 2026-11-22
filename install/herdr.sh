@@ -2,7 +2,8 @@
 # Herdr: the desktop app, the `herdr` CLI it runs on, and our Herdr setup
 # (layout, Modus themes, mods, settings) kept in herdr/.
 #
-#   install/herdr.sh install [--force]  install Herdr if missing, copy herdr/ into
+#   install/herdr.sh install [--force]  install Herdr if missing, make Herdr Alerts.app
+#                                       (macOS notifications), copy herdr/ into
 #                                       ~/.config/herdr-app, make our layout the default.
 #                                       Files that differ locally are listed, not replaced,
 #                                       unless --force (which backs them up first)
@@ -52,6 +53,43 @@ install_app() {
   cp -R "$tmp/mnt/Herdr.app" /Applications/
   hdiutil detach -quiet "$tmp/mnt"
   rm -rf "$tmp"
+}
+
+# Herdr's alerts reach macOS Notification Center through terminal-notifier (Brewfile)
+# when Herdr isn't the app in front (herdr/mods/toast-native). A notification's
+# name, icon and permission come from the app that sends it, and macOS only grants
+# permission to an app in ~/Applications or /Applications, so this makes a copy there
+# with its own identity: "Herdr Alerts", with Herdr's icon. Rebuilt when
+# terminal-notifier's version changes; otherwise left alone, since re-signing an
+# unchanged copy could make macOS ask for permission again.
+NOTIFIER_APP="$HOME/Applications/Herdr Alerts.app"
+make_notifier() {
+  local prefix src version have plist
+  prefix=$(brew --prefix terminal-notifier 2>/dev/null) || true
+  src="$prefix/terminal-notifier.app"
+  [ -d "$src" ] || { echo "terminal-notifier not installed (brew bundle): Herdr alerts stay in the app."; return 0; }
+  [ -d /Applications/Herdr.app ] || return 0
+  version=$(defaults read "$src/Contents/Info.plist" CFBundleShortVersionString)
+  have=$(defaults read "$NOTIFIER_APP/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || true)
+  if [ "$have" = "$version" ]; then
+    echo "Herdr Alerts.app is up to date ($version)."
+    return 0
+  fi
+  echo "Making Herdr Alerts.app (terminal-notifier $version)..."
+  mkdir -p "$HOME/Applications"
+  rm -rf "$NOTIFIER_APP"
+  cp -R "$src" "$NOTIFIER_APP"
+  chmod -R u+w "$NOTIFIER_APP"
+  plist="$NOTIFIER_APP/Contents/Info.plist"
+  plutil -replace CFBundleIdentifier -string fr.julienxx.oss.terminal-notifier.herdr-alerts "$plist"
+  plutil -replace CFBundleName -string "Herdr Alerts" "$plist"
+  plutil -replace CFBundleDisplayName -string "Herdr Alerts" "$plist"
+  cp /Applications/Herdr.app/Contents/Resources/Herdr.icns "$NOTIFIER_APP/Contents/Resources/Terminal.icns"
+  codesign --force --deep --sign - "$NOTIFIER_APP"
+  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$NOTIFIER_APP"
+  # macOS only lets it ask for permission when it's launched as an app (open), not run
+  # from a terminal, so the first notification goes that way: approve the prompt.
+  open -W -n "$NOTIFIER_APP" --args -title "Herdr Alerts" -message "Herdr's alerts will show here when Herdr isn't in front." || true
 }
 
 apply_config() { # [--force]
@@ -126,15 +164,19 @@ case "${1:-}" in
   install)
     install_cli
     install_app
+    make_notifier
     apply_config "${2:-}"
     default_layout
+    ;;
+  notifier)
+    make_notifier
     ;;
   capture)
     shift
     capture "$@"
     ;;
   *)
-    echo "usage: $0 install [--force] | capture [path...]" >&2
+    echo "usage: $0 install [--force] | notifier | capture [path...]" >&2
     exit 2
     ;;
 esac

@@ -22,6 +22,7 @@ brew "minikube"
 brew "go"
 brew "just"        # command runner
 brew "jq"          # used by bootstrap.sh / update.sh to read Claude settings
+brew "terminal-notifier" # macOS notifications for Herdr alerts (herdr/mods/toast-native)
 
 # --- Language servers (used by Claude Code's LSP plugins; rust-analyzer comes from rustup) ---
 brew "gopls"
