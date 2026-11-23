@@ -1,15 +1,15 @@
 {
-  "zoom": 1,
+  "zoom": 0.8999999761581421,
   "sounds": {
     "enabled": true
   },
   "font": "Noto Sans Mono",
-  "font_size": 16,
+  "font_size": 16.0,
   "font_weight": 300,
   "font_ligatures": false,
-  "terminal_line_height": 1,
-  "terminal_cell_width": 1,
-  "terminal_scroll_speed": 1,
+  "terminal_line_height": 1.0,
+  "terminal_cell_width": 1.0,
+  "terminal_scroll_speed": 1.0,
   "ui_font": "Noto Sans Mono",
   "minimum_contrast": 4.5,
   "theme": {

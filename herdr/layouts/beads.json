@@ -52,7 +52,8 @@
           },
           "size": {
             "px": 69
-          }
+          },
+          "hidden": true
         }
       ],
       "size": {
@@ -194,7 +195,8 @@
           },
           "size": {
             "px": 28
-          }
+          },
+          "hidden": true
         }
       ],
       "resizable": false

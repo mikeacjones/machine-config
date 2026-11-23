@@ -17,6 +17,10 @@ function find(node, id) {
   return null;
 }
 
+// This panel's own zoom, separate from the app's (shared, so it's remembered).
+const ZOOM_KEY = "beads.zoom";
+const panelZoom = () => Math.min(2, Math.max(0.7, Number(shared(ZOOM_KEY)) || 1));
+
 // Folded goes by the column's width, like the sidebar's rail: dragging it narrow folds it too.
 const RAIL = 36;
 const width = () => find(layout(), props()?.column)?.size?.px;
@@ -168,7 +172,9 @@ export default class Beads extends View {
     const s = settings();
     const mono = s.font_family ?? s.font ?? "JetBrains Mono";
     const weight = Number(s.font_weight) || 500;
-    const z = (n) => (n * (Number(s.font_size) || 14)) / 12.5;
+    // The panel's own zoom on top (⌘+scroll over it; the header's "120%" resets it).
+    const zoom = panelZoom();
+    const z = (n) => (n * (Number(s.font_size) || 14) * zoom) / 12.5;
     // Framed like a terminal pane: the pane header's look (30px, the terminal background, a
     // bottom border), with its controls showing on hover as a pane's do.
     const button = (id, icon, tip, action) => div().id(id).p(3).rounded(0).text_color(t.dim)
@@ -182,6 +188,10 @@ export default class Beads extends View {
       .child(div().flex_none().font_medium().text_color(t.foreground).child("Beads"))
       .child(div().flex_1().truncate().text_color(t.dim).child(this.root ? this.root.split("/").pop() : ""))
       .when(this.loading, (el) => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.dim).spin(900)))
+      .when(zoom !== 1, (el) => el.child(div().id("bd-zoom").flex_none().px(4).text_color(t.dim).cursor_pointer()
+        .hover((st) => st.bg(t.hover).text_color(t.foreground)).tooltip("Panel zoom: click for 100%")
+        .on_click((_e, cx) => { cx.stop_propagation(); setShared(ZOOM_KEY, 1); cx.notify(); })
+        .child(`${Math.round(zoom * 100)}%`)))
       .when(Boolean(this.hovered), (el) => el
         .child(button("bd-refresh", "refresh", "Refresh", (cx) => this.refresh(cx)))
         .child(button("bd-fold", "fold", "Collapse", () => toggleFold())));
@@ -195,8 +205,20 @@ export default class Beads extends View {
           .child(svg("mods/beads/unfold.svg").size(14).text_color(t.dim)))
         .when(busy > 0, (el) => el.child(div().font_family(mono).text_size(z(11)).text_color(t.working).child(String(busy))));
     }
-    const shell = (body) => v_flex().size_full().min_h(0).bg(t.background).font_family(mono).font_weight(weight)
-      .text_size(z(12.5)).child(head).child(body);
+    const shell = (body) => v_flex().id("bd-shell").size_full().min_h(0).bg(t.background).font_family(mono).font_weight(weight)
+      .text_size(z(12.5))
+      // ⌘+scroll: zoom this panel alone, 10% a step (a trackpad's small moves add up).
+      .on_scroll_wheel((e, cx) => {
+        if (!e.modifiers.platform) return;
+        cx.stop_propagation();
+        this.wheel = (this.wheel ?? 0) + (e.delta_lines?.y ?? e.delta.y / 24);
+        const steps = Math.trunc(this.wheel);
+        if (!steps) return;
+        this.wheel -= steps;
+        setShared(ZOOM_KEY, Math.round(Math.min(2, Math.max(0.7, panelZoom() + steps * 0.1)) * 10) / 10);
+        cx.notify();
+      })
+      .child(head).child(body);
 
     if (this.root === undefined) return shell(div().px(10).text_color(t.dim).text_size(z(12)).child("Looking for beads…"));
     if (!this.root) return shell(div().px(10).text_color(t.dim).text_size(z(12)).child("No beads workspace in this folder."));
@@ -260,7 +282,20 @@ export default class Beads extends View {
     const isOpen = (i) => this.fold[i.id] ?? sub(i).progress;
     // Rows as `bd list` prints them: tree lines, status glyph, id, priority, [type], title.
     const GLYPH = { open: "○", in_progress: "◐", blocked: "●", deferred: "❄", closed: "✓" };
-    const prioColor = (p) => (p === 0 ? t.blocked : p === 1 ? t.working : p === 2 ? t.ansi3 : t.dim);
+    const MINE = "#7f86f1";
+    // IDs padded to one width (the font is monospaced), so the priority tags after them line up.
+    const IDW = Math.min(14, Math.max(0, ...this.issues.map((i) => i.id.length)));
+    // Tree lines in slate, quiet like the grid lines in temporal.io's timeline.
+    const TREE = "#374761";
+    // Priority and epic as tags, the way temporal.io's timeline draws an activity: a 1px edge
+    // on a faint tint of its color. P0 pink, P1 yellow, P2 periwinkle, lower ones slate
+    // (with periwinkle text, for contrast). Epics get a line down their left edge (row, below).
+    const tag = (text, edge, fill, color) => div().flex_none().mr(6).px(z(4)).h(z(16)).flex().items_center()
+      .border(1).border_color(edge).bg(fill).text_size(z(10.5)).font_medium().text_color(color).child(text);
+    const prioTag = (p) => {
+      const edge = p === 0 ? t.blocked : p === 1 ? t.working : p === 2 ? t.dim : t.input;
+      return tag(PRIO[p] ?? `P${p}`, edge, edge + "26", p >= 3 ? t.dim : edge);
+    };
     // `hide`: beads shown elsewhere, left out of this tree.
     const row = (i, lead = [], indent = 0, hide = null) => {
       const on = this.expanded === i.id;
@@ -270,8 +305,33 @@ export default class Beads extends View {
       const glyph = active ? GLYPH.in_progress : GLYPH[i.status] ?? "○";
       const who = i.status === "in_progress" ? holder(i) : null;
       const isMine = Boolean(me && who === me.address);
-      const glyphColor = isMine ? t.accent : active ? t.working : i.status === "blocked" ? t.blocked : t.muted;
+      // Status on Temporal's colors: yours lavender-blue (the focused pane's color), in progress
+      // yellow, blocked pink, ready to start mint; the rest lavender.
+      const glyphColor = isMine ? MINE : active ? t.working : i.status === "blocked" ? t.blocked : i.ready ? t.done : t.muted;
       const prefix = lead.map((l, n) => (n === lead.length - 1 ? (l === "└" ? "└── " : "├── ") : l === "├" ? "│   " : "    ")).join("");
+      const details = () => div().ml(24 + indent).mr(10).mb(6).p(8).rounded(0).border(1).border_color(t.border).text_size(z(11))
+        .font_family(mono).text_color(t.muted).whitespace_normal().child(this.detail[i.id] ?? "Loading…");
+      // An epic is a header, like a space panel's in the sidebar: its title, the chevron on the
+      // right folding it, a line under it when open; its beads follow without tree lines.
+      if (i.issue_type === "epic") {
+        return v_flex().flex_none().mt(4)
+          .child(h_flex().id(`bd-${i.id}`).pl(10 + indent).pr(6).h(z(28)).gap(8).items_center()
+            .when(open, (el) => el.border_b(1).border_color(t.border))
+            .when(on, (el) => el.relative().bg(t.raised).child(div().absolute().top(0).left(0).w(4).h_full().bg("#59fda0")))
+            .cursor_pointer().hover((s) => s.bg(t.hover))
+            .on_click((_e, cx) => this.expand(i.id, cx))
+            .when(prefix.length > 0, (el) => el.child(div().flex_none().text_color(TREE).child(prefix)))
+            .child(div().flex_none().text_color(glyphColor).child(glyph))
+            .child(div().flex_1().min_w(0).truncate().font_medium().text_color(t.foreground).child(i.title ?? ""))
+            .child(div().flex_none().text_size(z(11)).text_color(t.dim).child(i.id))
+            .when(children.length > 0 && !open, (el) => el.child(div().flex_none().text_size(z(11)).text_color(t.dim).child(`+${sub(i).count}`)))
+            .when(children.length > 0, (el) => el.child(div().id(`fold-${i.id}`).flex_none().p(3).rounded(0).text_color(t.dim)
+              .hover((s) => s.bg(t.hover).text_color(t.foreground)).tooltip(open ? "Fold" : "Unfold")
+              .on_click((_e, cx) => { cx.stop_propagation(); this.foldParent(i.id, open, cx); })
+              .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(z(12))))))
+          .when(on, (el) => el.child(details()))
+          .when(open, (el) => el.children(children.map((k) => row(k, lead, indent, hide))));
+      }
       return v_flex().flex_none()
         .child(h_flex().id(`bd-${i.id}`).pl(10 + indent).pr(10).h(z(22)).items_center().rounded(0)
           .font_family(mono).text_size(z(12.5)).whitespace_nowrap()
@@ -282,29 +342,31 @@ export default class Beads extends View {
             .when(children.length > 0, (el) => el.cursor_pointer().hover((s) => s.text_color(t.foreground))
               .on_click((_e, cx) => { cx.stop_propagation(); this.foldParent(i.id, open, cx); })
               .child(open ? "▾" : "▸")))
-          .when(prefix.length > 0, (el) => el.child(div().flex_none().text_color(t.dim).child(prefix)))
+          .when(prefix.length > 0, (el) => el.child(div().flex_none().text_color(TREE).child(prefix)))
           .child(div().flex_none().text_color(glyphColor).child(`${glyph} `))
-          .child(div().flex_none().text_color(t.foreground).child(`${i.id} `))
-          .child(div().flex_none().text_color(prioColor(i.priority)).child(`${PRIO[i.priority] ?? ""} `))
-          .when(Boolean(who), (el) => el.child(div().flex_none().text_color(isMine ? t.accent : t.dim).child(`@${who} `)))
-          .when(i.issue_type === "epic", (el) => el.child(div().flex_none().text_color(t.ansi5).child("[epic] ")))
+          .child(div().flex_none().text_color(t.foreground).child(`${i.id.padEnd(IDW, "\u00a0")} `))
+          .when(i.priority != null, (el) => el.child(prioTag(i.priority)))
+          .when(Boolean(who), (el) => el.child(div().flex_none().text_color(isMine ? MINE : t.dim).child(`@${who} `)))
           .child(div().flex_1().min_w(0).truncate().text_color(t.foreground).child(i.title ?? ""))
           .when(children.length > 0 && !open, (el) => el.child(div().flex_none().pl(6).text_size(z(10.5)).text_color(t.dim).child(`+${sub(i).count}`))))
-        .when(on, (el) => el.child(div().ml(24 + indent).mr(10).mb(6).p(8).rounded(0).border(1).border_color(t.border).text_size(z(11))
-          .font_family(mono).text_color(t.muted).whitespace_normal().child(this.detail[i.id] ?? "Loading…")))
+        .when(on, (el) => el.child(details()))
         .when(open, (el) => el.children(children.map((k, n) => row(k, [...lead, n === children.length - 1 ? "└" : "├"], indent, hide))));
     };
 
-    const section = (id, label, list, color, body) => {
+    // Section headers as temporal.io labels: uppercase lavender with 0.8px letter spacing
+    // (one box per character: elements have no letter spacing), then " · count".
+    const label = (text) => h_flex().gap(0.8).children([...text.toUpperCase()].map((c) => div().flex_none().child(c === " " ? "\u00a0" : c)));
+    const section = (id, title, list, body) => {
       if (!list.length) return [];
       const open = this.open.has(id);
       return [
-        h_flex().id(`sec-${id}`).px(10).pt(8).h(z(28)).flex_none().gap(6).items_center().text_size(z(11)).font_medium()
+        h_flex().id(`sec-${id}`).pl(10).pr(6).pt(8).h(z(28)).flex_none().gap(6).items_center().text_size(z(12)).font_medium()
           .on_click((_e, cx) => this.toggle(id, cx))
-          .child(div().text_color(color ?? t.dim).child(label))
-          .child(div().text_color(t.dim).child(String(list.length)))
+          .child(div().text_color(t.muted).child(label(title)))
+          .child(div().text_color(t.dim).child(`· ${list.length}`))
           .child(div().flex_1())
-          .child(div().text_color(t.dim).child(open ? "▾" : "▸")),
+          // The same chevron, in the same place, as an epic header's.
+          .child(div().flex_none().p(3).text_color(t.dim).child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(z(12)))),
         ...(open ? body() : []),
       ];
     };
@@ -325,19 +387,19 @@ export default class Beads extends View {
 
     // The open agent first: what it holds, or that it holds nothing.
     const meRows = !me ? [] : [
-      h_flex().id("sec-me").px(10).pt(8).h(z(28)).flex_none().gap(6).items_center().text_size(z(11)).font_medium()
-        .child(div().text_color(t.accent).child("This agent"))
-        .child(div().text_color(t.dim).child(`${me.address} · ${me.space_name}`)),
+      h_flex().id("sec-me").px(10).pt(8).h(z(28)).flex_none().gap(6).items_center().text_size(z(12)).font_medium()
+        .child(div().flex_none().text_color(t.muted).child(label("This agent")))
+        .child(div().min_w(0).truncate().text_color(t.dim).child(`· ${me.address} · ${me.space_name}`)),
       ...(mine.length
         ? tops(mine).sort(byPrio).map((i) => row(i, [], 12))
         : [div().px(10).pb(2).text_size(z(11.5)).text_color(t.dim).child("This agent has claimed no beads.")]),
     ];
     const rows = [
       ...meRows,
-      ...section("agents", "Other agents", others.map(([term]) => term), t.working, agentRows),
-      ...section("progress", "In progress", progress, null, () => progress.map((i) => row(i, [], 0, above))),
-      ...section("ready", "Ready", ready, null, () => ready.map((i) => row(i, [], 0, above))),
-      ...section("other", "Open, waiting", other, null, () => other.map((i) => row(i, [], 0, above))),
+      ...section("agents", "Other agents", others.map(([term]) => term), agentRows),
+      ...section("progress", "In progress", progress, () => progress.map((i) => row(i, [], 0, above))),
+      ...section("ready", "Ready", ready, () => ready.map((i) => row(i, [], 0, above))),
+      ...section("other", "Open, waiting", other, () => other.map((i) => row(i, [], 0, above))),
     ];
     return shell(v_flex().id("bd-list").flex_1().min_h(0).pb(8).overflow_y_scrollbar()
       .when(Boolean(this.error), (el) => el.child(div().px(10).text_size(z(11)).text_color(t.blocked).child(this.error)))
