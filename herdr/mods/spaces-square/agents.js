@@ -27,8 +27,9 @@ const INDENT = 8;
 
 // Drops what an agent puts before its title: a status glyph or spinner and the separator
 // after it ("✦  Working", "⠋ - Thinking"), and Codex's blinking "[ ! ] " / "[ . ] " mark.
-// Stops at an opening bracket or quote, so a title that starts with one ("[web] login") keeps it.
-const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}\p{Ps}\p{Pi}]+/u, "").replace(/^\[ [!.] \] /, "").trim();
+// Stops at an opening bracket or quote, so a title that starts with one ("[web] login") keeps it,
+// and at an emoji ("🔴 login", "❤️ deploy"), except for known status marks.
+const clean = (s) => (s ?? "").replace(/^(?:\[ [!.] \] |[✋⏳]\uFE0F?(?=\s)|(?!(?:\p{Emoji}\uFE0F|[#*]\u20E3))[^\p{L}\p{N}\p{Ps}\p{Pi}\p{Emoji_Presentation}])+/u, "").trim();
 
 function leadPanes(all) {
   const leads = new Map();
@@ -53,8 +54,10 @@ function title(tab, l) {
 const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
 // A sub-agent without a pane isn't in agents(): its raw word, error counting as
 // blocked. It's never done: it reports to its parent, and the parent's done is the news.
+// A kept sub-agent (one with a pane) is in agents() too: it keeps its own status, done included.
 const kidStatus = (k, listed) => {
-  const s = listed.get(k.address) ?? k.status;
+  if (listed.has(k.address)) return listed.get(k.address);
+  const s = k.status;
   return s === "error" ? "blocked" : s === "done" ? "idle" : s;
 };
 
