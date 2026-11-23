@@ -40,3 +40,4 @@ cask "shottr"
 
 # --- Fonts ---
 cask "font-iosevka"
+cask "font-noto-sans-mono" # Herdr font (temporal.io's monospace)

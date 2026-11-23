@@ -1,5 +1,17 @@
-import { View, div, svg, image } from "gpui-kit";
+import { View, div, svg, image, Background, PathBuilder } from "gpui-kit";
 import { h_flex, ScrollHandle } from "gpui-base";
+
+// The highlight border ("this is the selected one"): temporal.io's "ultraviolet" button
+// border, a 45° blue-to-purple gradient (#444ce7 to #b664ff), here 1px. Elements only
+// take solid colors, so the gradient is painted as a rectangle under the element,
+// which sits 1px in from each edge.
+// (Same as gradientFrame in spaces-square/agents.js: mods can't import each other.)
+// As the shipped win98 mod paints its gradients: the painted layer itself is absolute and
+// full size (a path's percentages are of its own bounds), and its path is built per draw.
+const RECT = () => PathBuilder.fill().move_to("0%", "0%").line_to("100%", "0%").line_to("100%", "100%").line_to("0%", "100%").close().build();
+const gradientFrame = (el) => div().relative().p(1).flex_none()
+  .child(globalThis.window.paint_path(RECT(), Background.linear_gradient(45, "#444ce7", "#b664ff")).absolute().top(0).left(0).size_full())
+  .child(el.relative());
 import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings } from "herdr";
 
 function find(node, id) {
@@ -105,11 +117,11 @@ export default class Tabs extends View {
       const lead = panes().find(p => p.tab === c.id && p.program?.agent) ?? panes().find(p => p.tab === c.id);
       const program = lead?.program;
       const name = label(c, lead);
-      return h_flex().id(`tab-${c.id}`).h(29).px(10).gap(7).rounded(0).items_center().flex_none().text_size(12.8)
+      const tab = h_flex().id(`tab-${c.id}`).h(c.active ? 27 : 29).px(10).gap(7).rounded(0).items_center().flex_none().text_size(12.8)
         // A rename or status dot on this or an earlier tab can push the active one out.
         .when(i <= active, el => el.on_size_change((_size, cx) => { this.scroll.scroll_to_item(active); cx.notify(); }))
-        // Same background as the bar; the selected tab gets the focused pane's accent border.
-        .border(1).border_color(c.active ? t.accent : t.chrome).bg(t.chrome).text_color(c.active ? t.foreground : t.muted)
+        // Same background as the bar; the selected tab gets the highlight border (gradientFrame).
+        .when(!c.active, el => el.border(1).border_color(t.chrome)).bg(t.chrome).text_color(c.active ? t.foreground : t.muted)
         .hover(s => s.bg(t.hover))
         .on_mouse_down("left", (e, cx) => { cx.stop_propagation(); this.pressed = i; if (e.click_count === 2) run("tab.rename", { id: c.id }); })
         .on_mouse_up("left", () => {
@@ -123,6 +135,7 @@ export default class Tabs extends View {
         .when(c.status === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
         .when(c.status === "blocked" || c.status === "done", el => el.child(div().size(6).rounded(0).bg(t[c.status])))
         .when(c.active, el => el.child(div().id(`close-${c.id}`).text_color(t.dim).on_mouse_down("left", stop).on_click((_e, cx) => { cx.stop_propagation(); run("tab.close", { id: c.id }); }).child(svg("mods/pane/close.svg").size(12))));
+      return c.active ? gradientFrame(tab) : tab;
     };
     const root = layout(), sidebar = find(root, "sidebar"), w = window();
     // Old saved rails and a dragged-narrow sidebar can be smaller than the window buttons.

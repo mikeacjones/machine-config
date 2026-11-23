@@ -60,7 +60,13 @@
       },
       "min": 44,
       "max": 480,
-      "background": "chrome",
+      "background": {
+        "gradient": [
+          "#211b4e",
+          "#141414"
+        ],
+        "angle": 180
+      },
       "resizable": false
     },
     {
@@ -103,7 +109,7 @@
                   },
                   "focus": {
                     "width": 1,
-                    "color": "accent"
+                    "color": "#7f86f1"
                   },
                   "radius": 0,
                   "gap": 8,

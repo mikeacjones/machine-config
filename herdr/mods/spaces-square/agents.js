@@ -2,10 +2,25 @@
 // spaces and agents are one list. Each space row is followed by its agents; each agent
 // by the beads it holds (extras.js) and its live sub-agents.
 
-import { div, image, svg } from "gpui-kit";
+import { div, image, svg, Background, PathBuilder } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { agents, terminals, panes, spaces, run } from "herdr";
 import { beadLines } from "./extras.js";
+
+// The highlight border ("this is the selected one"): temporal.io's "ultraviolet" button
+// border, a 45° blue-to-purple gradient (#444ce7 to #b664ff), here 1px. Elements only
+// take solid colors, so the gradient is painted as a rectangle under the element,
+// which sits 1px in from each edge.
+// As the shipped win98 mod paints its gradients: the painted layer itself is absolute and
+// full size (a path's percentages are of its own bounds), and its path is built per draw.
+const RECT = () => PathBuilder.fill().move_to("0%", "0%").line_to("100%", "0%").line_to("100%", "100%").line_to("0%", "100%").close().build();
+const gradientFrame = (el) => div().relative().p(1).flex_none()
+  .child(globalThis.window.paint_path(RECT(), Background.linear_gradient(45, "#444ce7", "#b664ff")).absolute().top(0).left(0).size_full())
+  .child(el.relative());
+
+// Selected, as temporal.io marks the active item: a 4px mint bar down the left edge,
+// on a faint indigo tint (theme "raised") instead of a filled blue row.
+const selected = (el, t) => el.relative().bg(t.raised).child(div().absolute().top(0).left(0).w(4).h_full().bg("#59fda0"));
 
 // Agent rows sit at the top level, as in the agents list.
 const INDENT = 8;
@@ -149,10 +164,11 @@ export function familyCard(v, t, fam) {
     return [sub, ...rows];
   });
 
-  return v_flex().id(`card-${main.id}`).flex_none().my(4)
-    .border(1).border_color(fam.some((r) => r.w.active) ? t.accent : t.border).bg(t.background)
+  const card = v_flex().id(`card-${main.id}`).flex_none().bg(t.background)
     .child(head)
-    .when(open, (el) => el.child(v_flex().pb(2).children(body)));
+    .when(open, (el) => el.child(v_flex().children(body)));
+  // The space you're in: the highlight border. The others: a plain gray one.
+  return fam.some((r) => r.w.active) ? gradientFrame(card).my(4) : card.my(4).border(1).border_color(t.border);
 }
 
 export function agentRows(v, t, cx) {
@@ -220,7 +236,7 @@ export function agentRows(v, t, cx) {
     const when = v.changed[a.address]?.at ?? 0;
     const idle = a.status === "idle" && !a.focused;
     return h_flex().id(`ag-${a.address}`).pl(INDENT).pr(8).h(30).flex_none().rounded(0).items_center().gap(9)
-      .when(a.focused, (el) => el.bg(t.selected))
+      .when(a.focused, (el) => selected(el, t))
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click(() => run("pane.focus", { pane: a.pane }))

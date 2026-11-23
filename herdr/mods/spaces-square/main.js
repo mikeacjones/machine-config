@@ -7,6 +7,15 @@ import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle } from "gpui-base";
 import { spaces, machines, panes, run, openOverlay, exec, hc, theme, settings, shared, setShared, watchFolder, window, layout, focused, setAgentOrder, props, checking } from "herdr";
 import { agentRows, familyCard } from "./agents.js";
+
+// Selected, as temporal.io marks the active item: a 4px mint bar down the left edge,
+// on a faint indigo tint (theme "raised") instead of a filled blue row.
+const selected = (el, t) => el.relative().bg(t.raised).child(div().absolute().top(0).left(0).w(4).h_full().bg("#59fda0"));
+
+// A label in temporal.io's style. Its 0.8px letter spacing isn't something elements can
+// set, so each character is its own box with a 0.8px gap. Short labels only: it can't truncate.
+const tracked = (text) => h_flex().gap(0.8).children([...text].map((c) => div().flex_none().child(c === " " ? "\u00a0" : c)));
+
 import { Probe, accountCards, followBeads } from "./extras.js";
 
 function find(node, id) {
@@ -410,7 +419,8 @@ export default class Spaces extends View {
       const folded = this.folded.has(m);
       const icon = svg(`mods/workspace-chrome/${m ? "server" : "monitor"}.svg`).size(13).flex_none();
       const badge = div().absolute().right(-3).bottom(-2).size(6).rounded(0).border_1().border_color(t.chrome).bg(connected ? t.ansi2 : t.dim);
-      const head = h_flex().id(`machine-${m ?? "local"}`).h(26).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().text_size(11).text_color(t.dim)
+      // A label in temporal.io's style: small, medium weight, uppercase, lavender.
+      const head = h_flex().id(`machine-${m ?? "local"}`).h(26).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().text_size(12).font_medium().text_color(t.muted)
         .when(collapsed, el => el.mt(4).w(RAIL_CELL).justify_center().rounded(0).tooltip(login ? `${m} needs a login: run ${login}. Click for Copy.` : m ? `${m} · ${connected ? "connected" : (machine?.state ?? "asleep").replace(/_/g, " ")}` : "This computer"))
         .cursor_pointer().hover(s => s.bg(t.hover))
         .on_click((_e, cx) => {
@@ -424,7 +434,7 @@ export default class Spaces extends View {
           .on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "machine-add", kind: "dialog", width: 560 }); }).child("⚠")))
         .when(!collapsed, el => el.child(icon))
         .when(collapsed, el => el.child(div().relative().flex_none().child(icon).when(Boolean(m), el => el.child(badge))))
-        .when(!collapsed, el => el.child(div().flex_1().truncate().child(m ?? "This computer"))
+        .when(!collapsed, el => el.child(div().flex_1().min_w(0).overflow_hidden().child(tracked((m ?? "This computer").toUpperCase())))
           .when(!connected && !rebuilt && !login, el => el.child(div().flex_none().child((machine?.state ?? "asleep").replace(/_/g, " "))))
           .when(rebuilt, el => el.child(h_flex().flex_none().gap(3).items_center()
             .child(div().max_w(140).truncate().child(repair?.error || "rebuilt ·"))
@@ -501,7 +511,7 @@ export default class Spaces extends View {
       .flex_none()
       .justify_center()
       .rounded(0)
-      .when(on, (el) => el.bg(t.selected))
+      .when(on, (el) => selected(el, t))
       .when(!on, (el) => el.hover((s) => s.bg(t.hover)))
       .when(this.pressed === w.id && this.over !== w.id, (el) => el.opacity(0.5))
       .when(this.pressed !== null && this.over === w.id && this.pressed !== w.id, (el) => el.child(
@@ -554,7 +564,7 @@ export default class Spaces extends View {
       .rounded(0)
       .justify_center()
       .items_center()
-      .when(w.active, (el) => el.bg(t.selected))
+      .when(w.active, (el) => selected(el, t))
       .when(!w.active, (el) => el.hover((s) => s.bg(t.hover)))
       .on_click(() => run("space.select", { id: w.id }))
       .child(div().text_color(w.active ? t.foreground : t.muted).child(String(i + 1)))
@@ -591,12 +601,9 @@ export default class Spaces extends View {
       this.revealedAt = this.activeAt;
       if (this.activeAt >= 0) this.scroll.scroll_to_item(this.activeAt);
     }
-    return v_flex().size_full().min_h(0).bg(t.chrome).text_size(13)
-      // No "Spaces" label: just the new-space button, on the right.
-      .child(h_flex().h(31).pl(16).pr(10).items_center().justify_end().text_size(11.5).text_color(t.dim)
-        .when(collapsed, el => el.pl(0).pr(0).justify_center())
-        .child(div().id("space-new").size(26).flex_none().flex().items_center().justify_center().rounded(0).hover(s => s.bg(t.hover).text_color(t.foreground))
-          .on_click(() => run("space.new")).child(svg("mods/workspace-chrome/plus.svg").size(14))))
+    // No background of its own: the sidebar's glow (layout) shows through.
+    return v_flex().size_full().min_h(0).text_size(13)
+      // No header row: new spaces come from the keyboard shortcut (or a machine header's +).
       .child(v_flex().flex_1().min_h(0).px(collapsed ? 0 : 8).pb(14).overflow_y_scrollbar().mode("always").track_scroll(this.scroll)
         // A block above (another mod's) growing, or the window resizing, shrinks this list and can push the active space out.
         .on_size_change((_size, cx) => { if (this.activeAt >= 0) { this.scroll.scroll_to_item(this.activeAt); cx.notify(); } })

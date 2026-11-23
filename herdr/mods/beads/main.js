@@ -275,7 +275,7 @@ export default class Beads extends View {
       return v_flex().flex_none()
         .child(h_flex().id(`bd-${i.id}`).pl(10 + indent).pr(10).h(z(22)).items_center().rounded(0)
           .font_family(mono).text_size(z(12.5)).whitespace_nowrap()
-          .when(on, (el) => el.bg(t.selected))
+          .when(on, (el) => el.relative().bg(t.raised).child(div().absolute().top(0).left(0).w(4).h_full().bg("#59fda0"))) // temporal.io's mint marker
           .hover((s) => s.bg(t.hover))
           .on_click((_e, cx) => this.expand(i.id, cx))
           .child(div().id(`fold-${i.id}`).w(14).flex_none().text_size(z(10)).text_color(t.dim)

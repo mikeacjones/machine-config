@@ -5,8 +5,20 @@
 //   per limit the account has, and a "full by" estimate only when that lands before the reset.
 // Account per agent comes from probe.py (local machine only).
 
-import { div } from "gpui-kit";
+import { div, Background, PathBuilder } from "gpui-kit";
+
+// The highlight border: temporal.io's "ultraviolet" gradient, as in agents.js (whose
+// gradientFrame this repeats, since extras.js is imported by it, not the other way).
+const RECT = () => PathBuilder.fill().move_to("0%", "0%").line_to("100%", "0%").line_to("100%", "100%").line_to("0%", "100%").close().build();
+const gradientFrame = (el) => div().relative().p(1).flex_none()
+  .child(globalThis.window.paint_path(RECT(), Background.linear_gradient(45, "#444ce7", "#b664ff")).absolute().top(0).left(0).size_full())
+  .child(el.relative());
 import { v_flex, h_flex } from "gpui-base";
+
+// A label in temporal.io's style. Its 0.8px letter spacing isn't something elements can
+// set, so each character is its own box with a 0.8px gap. Short labels only: it can't truncate.
+const tracked = (text) => h_flex().gap(0.8).children([...text].map((c) => div().flex_none().child(c === " " ? "\u00a0" : c)));
+
 import { exec, appHome, shared, spaces, panes, focused, run } from "herdr";
 
 const USAGE_EVERY = 180000;
@@ -118,11 +130,15 @@ function left(ms) {
   return h < 24 ? `${h}h ${m % 60}m` : `${Math.floor(h / 24)}d ${h % 24}h`;
 }
 
-function fillColor(t, b) {
-  if (b.percent >= 100 || b.severity === "critical") return t.blocked;
-  if (b.percent >= 80 || b.severity === "warning") return t.ansi3;
-  return t.accent;
+// Bars drawn like temporal.io's Event Timeline: a tinted block with a brighter 1px edge
+// (their activity blue; yellow from 80%, red when full) over faint grid columns, one per
+// hour of a 5-hour window or per day of a weekly one, with the text inside the bar.
+function fillLook(t, b) {
+  if (b.percent >= 100 || b.severity === "critical") return { fill: "#ff555566", edge: "#ff5555" };
+  if (b.percent >= 80 || b.severity === "warning") return { fill: "#fecb2f40", edge: t.working };
+  return { fill: "#444ce799", edge: "#6169ed" };
 }
+const columns = (b) => (b.hours && b.hours <= 5 ? Math.round(b.hours) : b.hours >= 24 ? Math.round(b.hours / 24) : 4);
 
 // One card per account that has a running agent, below the list. With several accounts,
 // the ones the open agent (address `open`) isn't using are faded.
@@ -137,7 +153,7 @@ export function accountCards(t, probe, now, open) {
   const current = open && probe.agents[open] ? (probe.agents[open].config ?? "") : null;
   const fade = (config) => accounts.size > 1 && current !== null && config !== current;
   const sorted = [...accounts.entries()].sort((x, y) => String(x[1].email).localeCompare(String(y[1].email)));
-  // Each limit: label, percent and reset over a full-width bar; the reset turns into a
+  // Each limit: one bar with its label, percent and reset inside; the reset turns into a
   // yellow "full ~…" when the pace fills the bar first. Labels: 5h, Wk, Wk <model>.
   const short = (b) => (b.key === "session" ? "5h" : b.key === "weekly" ? "Wk" : b.key === "spend" ? "Spend" : b.label.replace(/^Weekly /, "Wk "));
   const money = (n, cur) => `${cur === "USD" ? "$" : ""}${Math.round(n).toLocaleString("en-US")}${cur === "USD" ? "" : ` ${cur}`}`;
@@ -153,27 +169,30 @@ export function accountCards(t, probe, now, open) {
           const when = b.key === "spend" ? `${money(b.used, b.currency)}/${money(b.limit, b.currency)}`
             : eta != null ? `full ~${clock(eta, now)}`
             : Number.isFinite(reset) ? `↻ ${b.hours <= 5 ? left(reset - now) : clock(reset, now)}` : "idle";
-          // Two lines per limit: label, percent and reset on top, a full-width bar below.
-          rows.push(v_flex().gap(4).id(`bar-${config}-${b.key}`)
+                    const look = fillLook(t, b);
+          const n = columns(b);
+          // One bar per limit: grid columns, the used part, and the label, percent and reset inside.
+          rows.push(div().id(`bar-${config}-${b.key}`).relative().w_full().h(24).border(1).border_color(t.border).bg(t.background)
             .tooltip(`${b.label}: ${Math.round(b.percent)}% used${Number.isFinite(reset) ? `, resets ${clock(reset, now)}` : ""}${eta != null ? `, full ~${clock(eta, now)} at this pace` : ""}`)
-            .child(h_flex().gap(8).items_center().text_size(12.5)
-              .child(div().flex_none().text_color(t.muted).child(short(b)))
+            .children(Array.from({ length: n - 1 }, (_, k) => div().absolute().top(0).h_full().w(1).left(`${(100 * (k + 1)) / n}%`).bg(t.border)))
+            .when(pct > 0, (el) => el.child(div().absolute().top(0).left(0).h_full().w(`${pct}%`).bg(look.fill).border(1).border_color(look.edge)))
+            .child(h_flex().relative().h_full().px(7).gap(8).items_center().text_size(12.5)
+              .child(div().flex_none().text_size(12).font_medium().text_color(t.muted).child(tracked(short(b).toUpperCase())))
               .child(div().flex_none().font_medium().text_color(t.foreground).child(`${Math.round(b.percent)}%`))
               .child(div().flex_1())
-              .child(div().flex_none().truncate().text_color(eta != null ? t.ansi3 : t.dim).child(when)))
-            .child(div().w_full().h(7).bg(t.border)
-              .child(div().h(7).w(`${pct}%`).bg(fillColor(t, b)))));
+              .child(div().flex_none().truncate().text_color(eta != null ? t.working : t.muted).child(when))));
         }
       } else {
         const plan = u?.plan ? `${u.plan[0].toUpperCase()}${u.plan.slice(1)} plan: ` : "";
         rows.push(div().text_size(12).text_color(t.dim).truncate()
           .child(u?.error ?? (u?.bars ? `${plan}no usage limits reported` : "usage…")));
       }
-      return v_flex().id(`acct-${config || "default"}`).px(10).py(8).gap(8).rounded(0).bg(t.surface).border(1)
-        .border_color(current === config && accounts.size > 1 ? t.input : t.border)
+      const card = v_flex().id(`acct-${config || "default"}`).px(10).py(8).gap(8).rounded(0).bg(t.surface)
         .when(fade(config), (el) => el.opacity(0.4))
         .child(div().text_size(12.5).font_medium().truncate().text_color(t.foreground).child(acc.email ?? (config.split("/").pop() || "~/.claude")))
         .children(rows);
+      // The account the open agent uses: the highlight border. Others: plain gray.
+      return current === config ? gradientFrame(card) : card.border(1).border_color(t.border);
     }));
 }
 
