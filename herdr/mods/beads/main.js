@@ -296,8 +296,11 @@ export default class Beads extends View {
       const edge = p === 0 ? t.blocked : p === 1 ? t.working : p === 2 ? t.dim : t.input;
       return tag(PRIO[p] ?? `P${p}`, edge, edge + "26", p >= 3 ? t.dim : edge);
     };
-    // `hide`: beads shown elsewhere, left out of this tree.
-    const row = (i, lead = [], indent = 0, hide = null) => {
+    // `hide`: beads shown elsewhere, left out of this tree. `inEpic`: the bead sits under an
+    // epic header. Those keep a fold column on the left, so they read as indented under the
+    // epic; a bead outside any epic starts where an epic's title does, its fold arrow on the
+    // right like an epic's chevron.
+    const row = (i, lead = [], indent = 0, hide = null, inEpic = false) => {
       const on = this.expanded === i.id;
       const children = (kids.get(i.id) ?? []).filter((k) => !hide?.has(k.id));
       const open = children.length > 0 && isOpen(i);
@@ -330,27 +333,29 @@ export default class Beads extends View {
               .on_click((_e, cx) => { cx.stop_propagation(); this.foldParent(i.id, open, cx); })
               .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(z(12))))))
           .when(on, (el) => el.child(details()))
-          .when(open, (el) => el.children(children.map((k) => row(k, lead, indent, hide))));
+          .when(open, (el) => el.children(children.map((k) => row(k, lead, indent, hide, true))));
       }
+      const fold = () => div().id(`fold-${i.id}`).w(14).flex_none().text_size(z(10)).text_color(t.dim)
+        .when(children.length > 0, (el) => el.cursor_pointer().hover((s) => s.text_color(t.foreground))
+          .on_click((_e, cx) => { cx.stop_propagation(); this.foldParent(i.id, open, cx); })
+          .child(open ? "▾" : "▸"));
       return v_flex().flex_none()
         .child(h_flex().id(`bd-${i.id}`).pl(10 + indent).pr(10).h(z(22)).items_center().rounded(0)
           .font_family(mono).text_size(z(12.5)).whitespace_nowrap()
           .when(on, (el) => el.relative().bg(t.raised).child(div().absolute().top(0).left(0).w(4).h_full().bg("#59fda0"))) // temporal.io's mint marker
           .hover((s) => s.bg(t.hover))
           .on_click((_e, cx) => this.expand(i.id, cx))
-          .child(div().id(`fold-${i.id}`).w(14).flex_none().text_size(z(10)).text_color(t.dim)
-            .when(children.length > 0, (el) => el.cursor_pointer().hover((s) => s.text_color(t.foreground))
-              .on_click((_e, cx) => { cx.stop_propagation(); this.foldParent(i.id, open, cx); })
-              .child(open ? "▾" : "▸")))
+          .when(inEpic, (el) => el.child(fold()))
           .when(prefix.length > 0, (el) => el.child(div().flex_none().text_color(TREE).child(prefix)))
           .child(div().flex_none().text_color(glyphColor).child(`${glyph} `))
           .child(div().flex_none().text_color(t.foreground).child(`${i.id.padEnd(IDW, "\u00a0")} `))
           .when(i.priority != null, (el) => el.child(prioTag(i.priority)))
           .when(Boolean(who), (el) => el.child(div().flex_none().text_color(isMine ? MINE : t.dim).child(`@${who} `)))
           .child(div().flex_1().min_w(0).truncate().text_color(t.foreground).child(i.title ?? ""))
-          .when(children.length > 0 && !open, (el) => el.child(div().flex_none().pl(6).text_size(z(10.5)).text_color(t.dim).child(`+${sub(i).count}`))))
+          .when(children.length > 0 && !open, (el) => el.child(div().flex_none().pl(6).text_size(z(10.5)).text_color(t.dim).child(`+${sub(i).count}`)))
+          .when(!inEpic && children.length > 0, (el) => el.child(fold().ml(6))))
         .when(on, (el) => el.child(details()))
-        .when(open, (el) => el.children(children.map((k, n) => row(k, [...lead, n === children.length - 1 ? "└" : "├"], indent, hide))));
+        .when(open, (el) => el.children(children.map((k, n) => row(k, [...lead, n === children.length - 1 ? "└" : "├"], indent, hide, inEpic))));
     };
 
     // Section headers as temporal.io labels: uppercase lavender with 0.8px letter spacing
