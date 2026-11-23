@@ -34,8 +34,8 @@ function toggleFold() {
 
 const LOOK_EVERY = 1000; // only compares the focused folder (a hidden column doesn't render); runs nothing
 const probe = () => `${appHome()}/mods/spaces-square/probe.py`;
-// "mikeacjones@t3" -> "t3"; null for a claim made outside a herdr terminal.
-const holder = (i) => /@(t\d+)$/.exec(String(i.assignee ?? ""))?.[1] ?? null;
+// "mikeacjones@t3" -> "t3", "mikeacjones@t2h" -> "t2h" (ids aren't only digits); null for a claim made outside a herdr terminal.
+const holder = (i) => /@(t[0-9a-z]+)$/.exec(String(i.assignee ?? ""))?.[1] ?? null;
 
 function location() {
   const space = spaces().find((s) => s.active), f = focused();
