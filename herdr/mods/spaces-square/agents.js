@@ -109,15 +109,17 @@ function track(v, list, now) {
   try { localStorage.setItem("changed", JSON.stringify(v.changed)); } catch {}
 }
 
-// Every space's agent rows: { rows: spaceId -> elements, members: spaceId -> agents,
+// Every space's agent rows: { rows: spaceId -> [(checkout line, space) -> elements], members: spaceId -> agents,
 // focused: ids of spaces whose agent has the focus }. `v` is the Spaces view (state:
 // changed, agentFolded, probe).
 // A repo's spaces with agents, framed like a terminal pane: a 1px border (the accent when
 // one of its spaces is shown, as a focused pane's is) and a 30px header like the pane
 // header with the main space's name; its chevron folds the panel, a click shows the
 // space, right-click is its menu. Inside, a sub-header per checkout (the main one, then
-// each worktree): the branch icon and the branch (a worktree: its name), then that space's agents.
-// A space outside any repo has no sub-header: its agents sit right under the header.
+// each worktree) a row per agent, the checkout as a small line under the agent's name: the
+// branch icon and the branch (a worktree: its name, and its branch when it differs). A checkout
+// without agents is one row named after its first tab (so renaming the tab renames it), the
+// checkout under it the same way. A space outside any repo has no checkout line.
 export function familyCard(v, t, fam) {
   const main = fam[0].w;
   const id = `sp-${main.id}`;
@@ -146,25 +148,20 @@ export function familyCard(v, t, fam) {
   const same = (a, b) => String(a ?? "").toLowerCase() === String(b ?? "").toLowerCase();
   const body = fam.flatMap((r, n) => {
     const { w, g } = r;
-    const rows = v.agents.rows.get(w.id) ?? [];
-    if (!g && fam.length === 1) return rows; // not a repo, no worktrees: nothing to say
+    const makers = v.agents.rows.get(w.id) ?? [];
     // Main checkout: its branch. A worktree: the space's name (usually the branch), and the
-    // branch when it differs.
+    // branch when it differs. Not a repo and no worktrees: nothing to say.
     const branch = g?.branch ?? (g ? "detached" : null);
     const label = r.tree ? w.name : branch ?? w.name;
     const extra = r.tree && branch && !same(branch, w.name) ? branch : null;
-    const sub = h_flex().id(`checkout-${w.id}`).h(26).flex_none().px(10).gap(7).items_center().text_size(12)
-      .when(n > 0, (el) => el.border_t(1).border_color(t.border))
-      .cursor_pointer().hover((s) => s.bg(t.hover))
-      .on_click(() => run("space.select", { id: w.id }))
-      .on_mouse_down("right", () => v.menu(w))
-      .child(svg("mods/workspace-chrome/branch.svg").size(12).flex_none().text_color(w.active ? t.accent : t.dim))
-      .child(div().flex_none().max_w(150).truncate().text_color(w.active ? t.accent : t.foreground).child(label))
-      .when(Boolean(extra), (el) => el.child(div().flex_1().min_w(0).truncate().text_color(t.dim).child(extra)))
-      .when(!extra, (el) => el.child(div().flex_1()))
+    const checkout = !g && fam.length === 1 ? null : h_flex().min_w(0).gap(5).items_center().text_size(11).text_color(t.dim)
+      .child(svg("mods/workspace-chrome/branch.svg").size(10).flex_none().text_color(w.active ? t.accent : t.dim))
+      .child(div().flex_none().max_w(150).truncate().text_color(w.active ? t.accent : t.muted).child(label))
+      .when(Boolean(extra), (el) => el.child(div().flex_1().min_w(0).truncate().child(extra)))
       .when(g?.ahead > 0, (el) => el.child(div().flex_none().text_color(t.ansi2).child(`\u2191${g.ahead}`)))
       .when(g?.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`)));
-    return [sub, ...rows];
+    const els = makers.length ? makers.flatMap((make) => make(checkout, w)) : [plainRow(v, t, w, checkout)];
+    return n > 0 ? [div().h(1).flex_none().bg(t.border), ...els] : els;
   });
 
   const card = v_flex().id(`card-${main.id}`).flex_none().bg(t.background)
@@ -172,6 +169,24 @@ export function familyCard(v, t, fam) {
     .when(open, (el) => el.child(v_flex().children(body)));
   // The space you're in: the highlight border. The others: a plain gray one.
   return fam.some((r) => r.w.active) ? gradientFrame(card).my(4) : card.my(4).border(1).border_color(t.border);
+}
+
+// A checkout without agents: its first tab's name (as an agent row would name it), the checkout under it.
+function plainRow(v, t, w, checkout) {
+  const tab = w.tabs?.[0];
+  const lead = tab ? v.agents.leads.get(tab.id) : null;
+  const name = tab ? title(tab, lead) : w.name;
+  const pic = icon(lead?.program, 16, t.foreground);
+  const on = w.active && !v.agents.focused.has(w.id);
+  return h_flex().id(`checkout-${w.id}`).pl(INDENT).pr(8).h(checkout ? 42 : 30).flex_none().rounded(0).items_center().gap(9)
+    .when(on, (el) => selected(el, t))
+    .cursor_pointer().hover((s) => s.bg(t.hover))
+    .on_click(() => run("space.select", { id: w.id }))
+    .on_mouse_down("right", () => v.menu(w))
+    .child(div().w(16).flex_none().when(Boolean(pic), (el) => el.child(pic)))
+    .child(v_flex().flex_1().min_w(0).gap(2)
+      .child(div().truncate().text_color(t.foreground).child(name || w.name))
+      .when(Boolean(checkout), (el) => el.child(checkout)));
 }
 
 export function agentRows(v, t, cx) {
@@ -234,22 +249,26 @@ export function agentRows(v, t, cx) {
       .child(statusMark(t, { status: st }));
   };
 
-  const row = (a, subs) => {
+  // `checkout`: the small branch line under the name, or null; `w`: the agent's space (right-click is its menu).
+  const row = (a, subs, checkout, w) => {
     const pic = icon(a.program, 16, t.foreground);
     const when = v.changed[a.address]?.at ?? 0;
     const idle = a.status === "idle" && !a.focused;
-    return h_flex().id(`ag-${a.address}`).pl(INDENT).pr(8).h(30).flex_none().rounded(0).items_center().gap(9)
+    return h_flex().id(`ag-${a.address}`).pl(INDENT).pr(8).h(checkout ? 42 : 30).flex_none().rounded(0).items_center().gap(9)
       .when(a.focused, (el) => selected(el, t))
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click(() => run("pane.focus", { pane: a.pane }))
+      .when(Boolean(w), (el) => el.on_mouse_down("right", () => v.menu(w)))
       .when(Boolean(pic), (el) => el.child(div().id(`agent-fold-${a.address}`)
         .when(subs.length > 0, (el) => el.on_click((_e, cx) => {
           cx.stop_propagation();
           v.agentFolded.has(a.address) ? v.agentFolded.delete(a.address) : v.agentFolded.add(a.address);
           cx.notify();
         })).child(pic)))
-      .child(div().flex_1().min_w(0).truncate().text_color(idle ? t.muted : t.foreground).child(nameOf(a)))
+      .child(v_flex().flex_1().min_w(0).gap(2)
+        .child(div().truncate().text_color(idle ? t.muted : t.foreground).child(nameOf(a)))
+        .when(Boolean(checkout), (el) => el.child(checkout)))
       .when(subs.length > 0, (el) => el.child(fold(a, subs)))
       .when(Boolean(when), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
       .child(statusMark(t, a));
@@ -259,11 +278,12 @@ export function agentRows(v, t, cx) {
   const rows = new Map(), members = new Map(), focused = new Set();
   for (const a of list) {
     const subs = tree(all, a.address);
-    const els = [row(a, subs), ...beadLines(t, a), ...(v.agentFolded.has(a.address) ? [] : subs.map((s) => subRow(s, shown)))];
+    // Built once the card knows the checkout line to put under the name.
+    const make = (checkout, w) => [row(a, subs, checkout, w), ...beadLines(t, a), ...(v.agentFolded.has(a.address) ? [] : subs.map((s) => subRow(s, shown)))];
     if (!rows.has(a.space)) { rows.set(a.space, []); members.set(a.space, []); }
-    rows.get(a.space).push(...els);
+    rows.get(a.space).push(make);
     members.get(a.space).push(a);
     if (a.focused) focused.add(a.space);
   }
-  return { rows, members, focused };
+  return { rows, members, focused, leads };
 }
