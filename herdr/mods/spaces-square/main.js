@@ -111,6 +111,15 @@ export default class Spaces extends View {
     try { this.folded = new Set(JSON.parse(localStorage.getItem("machines.folded") ?? "[]")); } catch { this.folded = new Set(); }
     // Agents under their spaces (agents.js), and the account usage cards (extras.js).
     this.agentFolded = new Set();
+    // Project names (agents.js) live in the shared "projects.names", repo -> name, which the
+    // project-name dialog writes. Names kept here before that move over once.
+    try {
+      const old = JSON.parse(localStorage.getItem("projects.names") ?? "{}");
+      if (old && typeof old === "object" && Object.keys(old).length) setShared("projects.names", { ...old, ...(shared("projects.names") ?? {}) });
+      localStorage.removeItem("projects.names");
+    } catch {}
+    this.drag = null; // what is being dragged to reorder (agents.js), and the row it is over
+    this.dragOver = null;
     try { this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}") || {}; } catch { this.changed = {}; }
     if (typeof this.changed !== "object" || Array.isArray(this.changed)) this.changed = {};
     this.probe = new Probe();
@@ -182,6 +191,11 @@ export default class Spaces extends View {
   sameRepo(key, keys) {
     const repo = this.git[key]?.repo;
     return [key, ...(repo ? [...keys].filter((k) => this.git[k]?.repo === repo) : [])];
+  }
+
+  // A repo card's project name: the dialog writes the shared name the card reads.
+  renameProject(repo, current) {
+    openOverlay({ mod: "project-name", kind: "dialog", width: 380, height: 230, props: { repo, value: current, title: "Rename project", hint: "empty: named after the repo" } });
   }
 
   refreshMachines(cx) {
@@ -317,9 +331,11 @@ export default class Spaces extends View {
     });
   }
 
-  menu(w) {
+  // `project`: { repo, name } when opened from a project card's header, where Rename names the
+  // project and New worktree starts from the main checkout's branch (menu-square).
+  menu(w, project = null) {
     // A popup is as tall as its items; height is only the most.
-    openOverlay({ mod: "menu", kind: "popup", width: 200, height: 260, props: { tab: "space", target: { id: w.id } } });
+    openOverlay({ mod: "menu-square", kind: "popup", width: 200, height: 260, props: { tab: "space", target: { id: w.id }, project: Boolean(project), ...(project ?? {}) } });
   }
 
   orderingDue(now) {
@@ -327,23 +343,23 @@ export default class Spaces extends View {
       && this.ordering.machines.every(name => machines().some(m => m.name === name && m.layout === "ready"));
   }
 
-  // Spaces in order, each repo's other spaces moved under its first main-checkout space:
-  // more spaces in the main checkout, then its worktrees.
+  // Spaces in order, each repo's other spaces moved under its first main-checkout space (or,
+  // with none open, its first worktree's): more spaces in the main checkout, then its worktrees.
   ordered() {
     const sp = spaces(), ps = panes();
     const ready = (w) => this.shown.has(w.id) || where(w, ps) in this.git || Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
     for (const w of sp) if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
     const list = sp.map((w, i) => ({ w, i, g: this.git[where(w, ps)] ?? null }));
-    const heads = new Map(); // repo -> its first main-checkout space
+    // repo -> its first main-checkout space, else (a bare repo, or only worktrees open) its first worktree's
+    const heads = new Map();
     for (const r of list) if (r.g && !r.g.linked && !heads.has(r.g.repo)) heads.set(r.g.repo, r);
-    const nested = (r) => r.g && heads.has(r.g.repo) && heads.get(r.g.repo) !== r;
+    for (const r of list) if (r.g && !heads.has(r.g.repo)) heads.set(r.g.repo, r);
+    const nested = (r) => r.g && heads.get(r.g.repo) !== r;
     const out = [];
-    const placed = new Set(); // repos whose worktrees are listed (under the first of its spaces)
     for (const r of list) {
       if (nested(r)) continue;
       out.push({ ...r, tree: null });
-      if (!r.g || r.g.linked || placed.has(r.g.repo)) continue;
-      placed.add(r.g.repo);
+      if (!r.g) continue;
       const kids = list.filter((k) => nested(k) && k.g.repo === r.g.repo).sort((a, b) => a.g.linked - b.g.linked);
       kids.forEach((k, n) => out.push({ ...k, tree: n === kids.length - 1 ? "└─" : "├─" }));
     }
@@ -519,6 +535,8 @@ export default class Spaces extends View {
       .child(v_flex().flex_1().min_h(0).px(collapsed ? 0 : 8).pb(14).overflow_y_scrollbar().mode("always").track_scroll(this.scroll)
         // A block above (another mod's) growing, or the window resizing, shrinks this list and can push the active space out.
         .on_size_change((_size, cx) => { if (this.activeAt >= 0) { this.scroll.scroll_to_item(this.activeAt); cx.notify(); } })
+        // A drag let go off any row it could land on: nothing moves.
+        .on_mouse_up("left", (_e, cx) => { this.drag = null; this.dragOver = null; cx.notify(); })
         .children(list))
       .when(Boolean(cards), (el) => el.child(cards))
       // On the macOS rail the traffic lights fill the header row: this unfolds it.

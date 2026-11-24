@@ -4,7 +4,7 @@
 
 import { div, image, svg, Background, PathBuilder } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { agents, terminals, panes, spaces, run } from "herdr";
+import { agents, terminals, panes, spaces, run, shared } from "herdr";
 import { beadLines } from "./extras.js";
 
 // The highlight border ("this is the selected one"): temporal.io's "ultraviolet" button
@@ -21,6 +21,34 @@ const gradientFrame = (el) => div().relative().p(1).flex_none()
 // Selected, as temporal.io marks the active item: a 4px mint bar down the left edge,
 // on a faint indigo tint (theme "raised") instead of a filled blue row.
 const selected = (el, t) => el.relative().bg(t.raised).child(div().absolute().top(0).left(0).w(4).h_full().bg("#59fda0"));
+
+// Drag to reorder: press on one item and let go over another of the same kind and scope
+// (an agent within its space, a card within its machine). `item`: { kind, id, scope, at },
+// `at` its place, so the line drawn over the target is on the side the dragged one lands.
+// The list clears a drag let go anywhere else (main.js).
+function draggable(v, t, el, item, drop) {
+  const d = v.drag;
+  const fits = (x) => x?.kind === item.kind && x.scope === item.scope;
+  const target = fits(d) && d.id !== item.id && v.dragOver === item.id;
+  return el.relative()
+    .when(fits(d) && d.id === item.id && v.dragOver !== null && v.dragOver !== item.id, (el) => el.opacity(0.5))
+    .when(target, (el) => el.child(div().absolute().left(0).right(0).h(2).bg(t.accent)
+      .when(d.at < item.at, (line) => line.bottom(0))
+      .when(d.at > item.at, (line) => line.top(0))))
+    .on_mouse_down("left", () => { v.drag = item; v.dragOver = item.id; })
+    .on_mouse_move((_e, cx) => {
+      if (!v.drag) return;
+      const over = fits(v.drag) ? item.id : null;
+      if (v.dragOver !== over) { v.dragOver = over; cx.notify(); }
+    })
+    .on_mouse_up("left", (_e, cx) => {
+      const from = v.drag;
+      v.drag = null;
+      v.dragOver = null;
+      if (fits(from) && from.id !== item.id) drop(from);
+      cx.notify();
+    });
+}
 
 // Agent rows sit at the top level, as in the agents list.
 const INDENT = 8;
@@ -120,8 +148,13 @@ function track(v, list, now) {
 // branch icon and the branch (a worktree: its name, and its branch when it differs). A checkout
 // without agents is one row named after its first tab (so renaming the tab renames it), the
 // checkout under it the same way. A space outside any repo has no checkout line.
+// The header names the project: the name you gave the repo (double-click the header, or its
+// right-click Rename project), else
+// the main checkout's space name, else (only worktrees open) the repo's own name.
 export function familyCard(v, t, fam) {
   const main = fam[0].w;
+  const repo = fam[0].g?.repo ?? null;
+  const name = (repo && shared("projects.names")?.[repo]) || (fam[0].g?.linked ? fam[0].g.name : main.name);
   const id = `sp-${main.id}`;
   const open = !v.agentFolded.has(id);
   const all = fam.flatMap((r) => v.agents.members.get(r.w.id) ?? []);
@@ -129,9 +162,12 @@ export function familyCard(v, t, fam) {
   const head = h_flex().id(`group-${main.id}`).h(30).flex_none().px(10).gap(8).items_center()
     .bg(t.background).when(open, (el) => el.border_b(1).border_color(t.border)).text_size(12)
     .cursor_pointer().hover((s) => s.bg(t.hover))
-    .on_click(() => run("space.select", { id: main.id }))
-    .on_mouse_down("right", () => v.menu(main))
-    .child(div().flex_1().min_w(0).truncate().font_medium().text_color(t.foreground).child(main.name))
+    .on_click((e) => {
+      if (repo !== null && e.click_count === 2) v.renameProject(repo, name);
+      else run("space.select", { id: main.id });
+    })
+    .on_mouse_down("right", () => v.menu(main, repo ? { repo, name } : null))
+    .child(div().flex_1().min_w(0).truncate().font_medium().text_color(t.foreground).child(name))
     .when(!open, (el) => el
       .when(all.length > 0, (el) => el.child(div().flex_none().text_color(t.dim).child(String(all.length))))
       .when(Boolean(top) && top !== "idle", (el) => el.child(statusMark(t, { status: top }))))
@@ -144,6 +180,13 @@ export function familyCard(v, t, fam) {
         cx.notify();
       })
       .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(12)));
+  // Dragged onto another card's header, the card's first space moves to that card's place: before
+  // it when going up, after its last space when going down. The list then brings its other spaces along.
+  const sp = spaces();
+  const at = sp.findIndex((s) => s.id === main.id);
+  const last = Math.max(...fam.map((r) => sp.findIndex((s) => s.id === r.w.id)));
+  const card = { kind: "card", id: main.id, scope: main.machine ?? null, at, last };
+  const header = draggable(v, t, head, card, (from) => run("space.move", { id: from.id, index: (from.at < at ? last : at) + 1 }));
 
   const same = (a, b) => String(a ?? "").toLowerCase() === String(b ?? "").toLowerCase();
   const body = fam.flatMap((r, n) => {
@@ -165,11 +208,11 @@ export function familyCard(v, t, fam) {
     return n > 0 ? [div().h(1).flex_none().bg(t.border), ...els] : els;
   });
 
-  const card = v_flex().id(`card-${main.id}`).flex_none().bg(t.background)
-    .child(head)
+  const panel = v_flex().id(`card-${main.id}`).flex_none().bg(t.background)
+    .child(header)
     .when(open, (el) => el.child(v_flex().children(body)));
   // The space you're in: the highlight border. The others: a plain gray one.
-  return fam.some((r) => r.w.active) ? gradientFrame(card).my(4) : card.my(4).border(1).border_color(t.border);
+  return fam.some((r) => r.w.active) ? gradientFrame(panel).my(4) : panel.my(4).border(1).border_color(t.border);
 }
 
 // A checkout without agents: its first tab's name (as an agent row would name it), the checkout under it.
@@ -207,6 +250,10 @@ export function agentRows(v, t, cx) {
   for (const a of list) tabCounts.set(a.tab, (tabCounts.get(a.tab) ?? 0) + 1);
   const leads = leadPanes(panes());
   const tabs = new Map(spaces().flatMap((s) => s.tabs).map((tab) => [tab.id, tab]));
+  // A space's agents in its tabs' order, which dragging one changes (tab.move). Rows only
+  // compare within a space, so tab positions from different spaces never meet.
+  const tabAt = (a) => tabs.get(a.tab)?.index ?? Infinity;
+  list.sort((a, b) => tabAt(a) - tabAt(b));
   const label = new Map(list.map((a) => {
     const tab = tabs.get(a.tab);
     const many = tabCounts.get(a.tab) > 1;
@@ -241,7 +288,8 @@ export function agentRows(v, t, cx) {
     return h_flex().id(`sub-${k.address}`).pl(39).pr(8).rounded(0).h(26).flex_none().gap(0).items_center().text_size(12.5)
       .when(on, (el) => el.bg(t.raised))
       .hover((s) => s.bg(t.hover))
-      .on_click(() => (listed.has(k.address) ? run("pane.focus", { terminal: k.address }) : run("terminal.peek", { terminal: k.address })))
+      // Its own agent, not the parent's: the click stops here.
+      .on_click((_e, cx) => { cx.stop_propagation(); listed.has(k.address) ? run("pane.focus", { terminal: k.address }) : run("terminal.peek", { terminal: k.address }); })
       .children(s.lines.map((l) => div().self_start().mt(-4).w(9).h(17).mr(4).flex_none()
         .when(Boolean(l), (el) => el.border_l(1.5).border_color(t.input))
         .when(l === "└" || l === "├", (el) => el.border_b(1.5))))
@@ -250,17 +298,13 @@ export function agentRows(v, t, cx) {
       .child(statusMark(t, { status: st }));
   };
 
-  // `checkout`: the small branch line under the name, or null; `w`: the agent's space (right-click is its menu).
-  const row = (a, subs, checkout, w) => {
+  // `checkout`: the small branch line under the name, or null. Clicks, hover and dragging belong to
+  // the agent's whole block (make, below).
+  const row = (a, subs, checkout) => {
     const pic = icon(a.program, 16, t.foreground);
     const when = v.changed[a.address]?.at ?? 0;
     const idle = a.status === "idle" && !a.focused;
     return h_flex().id(`ag-${a.address}`).pl(INDENT).pr(8).h(checkout ? 42 : 30).flex_none().rounded(0).items_center().gap(9)
-      .when(a.focused, (el) => selected(el, t))
-      .cursor_pointer()
-      .hover((s) => s.bg(t.hover))
-      .on_click(() => run("pane.focus", { pane: a.pane }))
-      .when(Boolean(w), (el) => el.on_mouse_down("right", () => v.menu(w)))
       .when(Boolean(pic), (el) => el.child(div().id(`agent-fold-${a.address}`)
         .when(subs.length > 0, (el) => el.on_click((_e, cx) => {
           cx.stop_propagation();
@@ -279,8 +323,20 @@ export function agentRows(v, t, cx) {
   const rows = new Map(), members = new Map(), focused = new Set();
   for (const a of list) {
     const subs = tree(all, a.address);
-    // Built once the card knows the checkout line to put under the name.
-    const make = (checkout, w) => [row(a, subs, checkout, w), ...beadLines(t, a), ...(v.agentFolded.has(a.address) ? [] : subs.map((s) => subRow(s, shown)))];
+    // Built once the card knows the checkout line to put under the name. The agent's row, its beads
+    // and sub-agents are one block: the selected agent's tint and bar, the hover, a click (shows
+    // the agent), right-click (its space's menu, `w`) and dragging all cover the whole of it.
+    // Dragged onto another agent in its space, its tab takes that agent's tab's place.
+    const item = { kind: "agent", id: a.address, scope: a.space, at: tabAt(a), tab: a.tab };
+    const make = (checkout, w) => [draggable(v, t, v_flex().id(`agent-${a.address}`).flex_none()
+      .when(a.focused, (el) => selected(el, t))
+      .cursor_pointer()
+      .hover((s) => s.bg(t.hover))
+      .on_click(() => run("pane.focus", { pane: a.pane }))
+      .when(Boolean(w), (el) => el.on_mouse_down("right", () => v.menu(w)))
+      .child(row(a, subs, checkout))
+      .children([...beadLines(t, a), ...(v.agentFolded.has(a.address) ? [] : subs.map((s) => subRow(s, shown)))]),
+      item, (from) => { if (from.tab !== a.tab) run("tab.move", { id: from.tab, index: item.at }); })];
     if (!rows.has(a.space)) { rows.set(a.space, []); members.set(a.space, []); }
     rows.get(a.space).push(make);
     members.get(a.space).push(a);
