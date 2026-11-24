@@ -152,8 +152,8 @@ export function familyCard(v, t, fam) {
     // Main checkout: its branch. A worktree: the space's name (usually the branch), and the
     // branch when it differs. Not a repo and no worktrees: nothing to say.
     const branch = g?.branch ?? (g ? "detached" : null);
-    const label = r.tree ? w.name : branch ?? w.name;
-    const extra = r.tree && branch && !same(branch, w.name) ? branch : null;
+    const label = g?.linked ? w.name : branch ?? w.name;
+    const extra = g?.linked && branch && !same(branch, w.name) ? branch : null;
     const checkout = !g && fam.length === 1 ? null : h_flex().min_w(0).gap(5).items_center().text_size(11).text_color(t.dim)
       .child(svg("mods/workspace-chrome/branch.svg").size(10).flex_none().text_color(w.active ? t.accent : t.dim))
       .child(div().flex_none().max_w(150).truncate().text_color(w.active ? t.accent : t.muted).child(label))

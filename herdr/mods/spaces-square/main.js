@@ -332,14 +332,16 @@ export default class Spaces extends View {
       && this.ordering.machines.every(name => machines().some(m => m.name === name && m.layout === "ready"));
   }
 
-  // Spaces in order, each worktree space moved under its main checkout's.
+  // Spaces in order, each repo's other spaces moved under its first main-checkout space:
+  // more spaces in the main checkout, then its worktrees.
   ordered() {
     const sp = spaces(), ps = panes();
     const ready = (w) => this.shown.has(w.id) || where(w, ps) in this.git || Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
     for (const w of sp) if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
     const list = sp.map((w, i) => ({ w, i, g: this.git[where(w, ps)] ?? null }));
-    const mains = new Set(list.filter((r) => r.g && !r.g.linked).map((r) => r.g.repo));
-    const nested = (r) => r.g?.linked && mains.has(r.g.repo);
+    const heads = new Map(); // repo -> its first main-checkout space
+    for (const r of list) if (r.g && !r.g.linked && !heads.has(r.g.repo)) heads.set(r.g.repo, r);
+    const nested = (r) => r.g && heads.has(r.g.repo) && heads.get(r.g.repo) !== r;
     const out = [];
     const placed = new Set(); // repos whose worktrees are listed (under the first of its spaces)
     for (const r of list) {
@@ -347,7 +349,7 @@ export default class Spaces extends View {
       out.push({ ...r, tree: null });
       if (!r.g || r.g.linked || placed.has(r.g.repo)) continue;
       placed.add(r.g.repo);
-      const kids = list.filter((k) => nested(k) && k.g.repo === r.g.repo);
+      const kids = list.filter((k) => nested(k) && k.g.repo === r.g.repo).sort((a, b) => a.g.linked - b.g.linked);
       kids.forEach((k, n) => out.push({ ...k, tree: n === kids.length - 1 ? "└─" : "├─" }));
     }
     // Simulate the batch so later indexes include earlier moves. An attempted
@@ -375,7 +377,7 @@ export default class Spaces extends View {
   // The rows, under a header per machine once one isn't this computer.
   grouped(t, collapsed) {
     const rows = this.ordered();
-    // A repo's spaces (its main checkout, then its worktrees) are one family. A family
+    // A repo's spaces (its main checkout's, then its worktrees') are one family. A family
     // with agents in any of its spaces is one panel (agents.js); one without, its rows.
     const families = (rs) => {
       const out = [];
