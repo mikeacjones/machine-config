@@ -112,7 +112,7 @@ function track(v, list, now) {
 // Every space's agent rows: { rows: spaceId -> [(checkout line, space) -> elements], members: spaceId -> agents,
 // focused: ids of spaces whose agent has the focus }. `v` is the Spaces view (state:
 // changed, agentFolded, probe).
-// A repo's spaces with agents, framed like a terminal pane: a 1px border (the accent when
+// A repo's spaces, framed like a terminal pane: a 1px border (the accent when
 // one of its spaces is shown, as a focused pane's is) and a 30px header like the pane
 // header with the main space's name; its chevron folds the panel, a click shows the
 // space, right-click is its menu. Inside, a sub-header per checkout (the main one, then
@@ -133,7 +133,7 @@ export function familyCard(v, t, fam) {
     .on_mouse_down("right", () => v.menu(main))
     .child(div().flex_1().min_w(0).truncate().font_medium().text_color(t.foreground).child(main.name))
     .when(!open, (el) => el
-      .child(div().flex_none().text_color(t.dim).child(String(all.length)))
+      .when(all.length > 0, (el) => el.child(div().flex_none().text_color(t.dim).child(String(all.length))))
       .when(Boolean(top) && top !== "idle", (el) => el.child(statusMark(t, { status: top }))))
     .child(div().id(`group-fold-${main.id}`).flex_none().p(3).rounded(0).text_color(t.dim)
       .hover((s) => s.bg(t.hover).text_color(t.foreground))
@@ -154,13 +154,14 @@ export function familyCard(v, t, fam) {
     const branch = g?.branch ?? (g ? "detached" : null);
     const label = g?.linked ? w.name : branch ?? w.name;
     const extra = g?.linked && branch && !same(branch, w.name) ? branch : null;
-    const checkout = !g && fam.length === 1 ? null : h_flex().min_w(0).gap(5).items_center().text_size(11).text_color(t.dim)
+    // A function: each row gets its own element (an element can only have one parent).
+    const checkout = () => !g && fam.length === 1 ? null : h_flex().min_w(0).gap(5).items_center().text_size(11).text_color(t.dim)
       .child(svg("mods/workspace-chrome/branch.svg").size(10).flex_none().text_color(w.active ? t.accent : t.dim))
       .child(div().flex_none().max_w(150).truncate().text_color(w.active ? t.accent : t.muted).child(label))
       .when(Boolean(extra), (el) => el.child(div().flex_1().min_w(0).truncate().child(extra)))
       .when(g?.ahead > 0, (el) => el.child(div().flex_none().text_color(t.ansi2).child(`\u2191${g.ahead}`)))
       .when(g?.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`)));
-    const els = makers.length ? makers.flatMap((make) => make(checkout, w)) : [plainRow(v, t, w, checkout)];
+    const els = makers.length ? makers.flatMap((make) => make(checkout(), w)) : [plainRow(v, t, w, checkout())];
     return n > 0 ? [div().h(1).flex_none().bg(t.border), ...els] : els;
   });
 

@@ -1,7 +1,6 @@
-// Workspace spaces: stable colored avatars, worktrees under their checkout,
-// grouped by machine when more than one is known. After a space's name, the repo
-// its first terminal is in now, only where unusual: branch, ahead/behind. Agent state lives in the agents list, not here. Click to
-// switch, right-click for its menu, drag to reorder.
+// Workspace spaces, grouped by machine when more than one is known: a panel per repo
+// (its main checkout's spaces, then its worktrees') or per space outside any repo, with
+// each space's agents in it (agents.js). Click to switch, right-click for its menu.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle } from "gpui-base";
@@ -44,8 +43,6 @@ function place(s, ps) {
   const tabs = new Set((s.tabs ?? []).map((c) => c.id));
   return ps.find((p) => tabs.has(p.tab) && p.cwd)?.cwd || s.folder;
 }
-// Two lines when the space has a repo/branch line under its name.
-const rowHeight = ({ tree, tail }) => (tail ? 44 : tree ? 28 : 30);
 const RAIL_CELL = 32;
 const railCell = (el) => h_flex().flex_none().justify_center().child(el);
 const where = (s, ps) => JSON.stringify([s.machine ?? null, place(s, ps)]);
@@ -103,8 +100,6 @@ export default class Spaces extends View {
     // worktree appears under its repo instead of jumping there.
     this.shown = new Set(spaces().map((s) => s.id));
     this.born = {};
-    this.pressed = null;
-    this.over = null;
     this.scroll = ScrollHandle.new(); // the list's position: the active space is brought into view through it
     this.activeAt = -1; // the active space's place among the list's children (headers and rows), -1 when not drawn
     this.machines = [];
@@ -377,8 +372,9 @@ export default class Spaces extends View {
   // The rows, under a header per machine once one isn't this computer.
   grouped(t, collapsed) {
     const rows = this.ordered();
-    // A repo's spaces (its main checkout's, then its worktrees') are one family. A family
-    // with agents in any of its spaces is one panel (agents.js); one without, its rows.
+    // A repo's spaces (its main checkout's, then its worktrees') are one family, drawn as
+    // one panel (agents.js); a space outside any repo is a family of its own. The narrow
+    // rail draws each space as a numbered cell instead.
     const families = (rs) => {
       const out = [];
       for (const r of rs) { if (r.tree && out.length) out.at(-1).push(r); else out.push([r]); }
@@ -388,14 +384,14 @@ export default class Spaces extends View {
       const out = [];
       let at = -1;
       for (const fam of families(rs)) {
-        if (!collapsed && fam.some((r) => this.agents?.members.get(r.w.id)?.length)) {
+        if (!collapsed) {
           if (fam.some((r) => r.w.active)) at = out.length;
           out.push(familyCard(this, t, fam));
           continue;
         }
         for (const r of fam) {
           if (r.w.active) at = out.length;
-          out.push(collapsed ? this.compact(r, t) : this.row(r, t));
+          out.push(this.compact(r, t));
         }
       }
       return { out, at };
@@ -482,88 +478,6 @@ export default class Spaces extends View {
     });
   }
 
-  // Only what's unusual, after the name: "herdr \u00b7 spike \u21912 \u21931". The repo or
-  // branch goes when the name already says it (a worktree is named after its branch),
-  // and master/main go: nearly every space is on one. When the row is full, it
-  // and the name both start from their text's width and give way in proportion.
-  gitTail(g, tree, name, t) {
-    const raw = g.branch ?? "detached";
-    const same = (a) => a.toLowerCase() === name.toLowerCase();
-    const branch = same(raw) || raw === "master" || raw === "main" ? "" : raw;
-    const repo = tree || same(g.name) ? "" : g.name;
-    const where = [repo, branch].filter(Boolean).join(" \u00b7 ");
-    if (!where && !(g.ahead > 0) && !(g.behind > 0)) return null;
-    // Under the name, starting where the name starts.
-    return h_flex()
-      .min_w(0)
-      .gap(5)
-      .items_center()
-      .text_size(11.5)
-      .text_color(t.dim)
-      .when(Boolean(where), (el) => el.child(div().min_w(0).truncate().child(where)))
-      .when(g.ahead > 0, (el) => el.child(div().flex_none().text_color(t.ansi2).child(`\u2191${g.ahead}`)))
-      .when(g.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`)));
-  }
-
-  row({ w, i, g, tree }, t) {
-    const on = w.active && !this.agents?.focused.has(w.id);
-    const tail = g ? this.gitTail(g, tree, w.name, t) : null;
-    const fromIndex = this.pressed === null ? -1 : spaces().findIndex(s => s.id === this.pressed);
-    const colors = shared("space.colors") ?? {};
-    const color = colors[w.id] ?? "ansi6";
-    const fill = color.startsWith("#") ? color : (mark()[color] ?? t[color]);
-    return v_flex()
-      .relative()
-      .id(`space-${w.id}`)
-      .px(8)
-      .h(rowHeight({ tree, tail }))
-      .flex_none()
-      .justify_center()
-      .rounded(0)
-      .when(on, (el) => selected(el, t))
-      .when(!on, (el) => el.hover((s) => s.bg(t.hover)))
-      .when(this.pressed === w.id && this.over !== w.id, (el) => el.opacity(0.5))
-      .when(this.pressed !== null && this.over === w.id && this.pressed !== w.id, (el) => el.child(
-        div().absolute().left(0).right(0).h(2).bg(t.accent)
-          .when(fromIndex < i, line => line.bottom(0))
-          .when(fromIndex > i, line => line.top(0)),
-      ))
-      .on_mouse_down("left", () => {
-        this.pressed = w.id;
-        this.over = w.id;
-      })
-      .on_mouse_move((_e, cx) => {
-        const source = spaces().find(s => s.id === this.pressed);
-        const over = source && (source.machine ?? null) === (w.machine ?? null) ? w.id : null;
-        if (this.pressed !== null && this.over !== over) {
-          this.over = over;
-          cx.notify();
-        }
-      })
-      .on_mouse_up("left", (_e, cx) => {
-        const from = this.pressed;
-        const over = this.over;
-        this.pressed = null;
-        this.over = null;
-        if (from !== null && over === w.id && from !== w.id) {
-          const index = spaces().findIndex(s => s.id === w.id);
-          if (index !== -1) run("space.move", { id: from, index: index + 1 });
-        } else if (from === w.id) run("space.select", { id: w.id });
-        cx.notify();
-      })
-      .on_mouse_down("right", () => this.menu(w))
-      .child(
-        h_flex()
-          .gap(9)
-          .items_center()
-          .when(Boolean(tree), el => el.pl(22).child(svg("mods/workspace-chrome/branch.svg").size(13).flex_none().text_color(t.dim)))
-          .when(!tree, el => el.child(h_flex().size(18).flex_none().rounded(0).bg(fill).items_center().justify_center().text_size(10.5).font_bold().text_color(t.foreground).child([...w.name][0]?.toUpperCase() ?? "?")))
-          .child(v_flex().flex_1().min_w(0).gap(2)
-            .child(div().truncate().text_color(t.foreground).child(w.name))
-            .when(Boolean(tail), (el) => el.child(tail))),
-      );
-  }
-
   compact({ w, i }, t) {
     return railCell(h_flex()
       .id(`space-${w.id}`)
@@ -584,18 +498,7 @@ export default class Spaces extends View {
     const t = theme();
     const collapsed = narrow();
     this.agents = agentRows(this, t, cx);
-    const palette = ["ansi6", "ansi3", "ansi4", "ansi5", "ansi2", "ansi1"];
     const sp = spaces();
-    const ids = new Set(sp.map(p => p.id));
-    const kept = Object.fromEntries(Object.entries(shared("space.colors") ?? {}).filter(([id]) => ids.has(id)));
-    let changed = Object.keys(kept).length !== Object.keys(shared("space.colors") ?? {}).length;
-    for (const p of sp) {
-      if (kept[p.id] || p.name === "~") continue;
-      const uses = c => Object.values(kept).filter(v => v === c).length;
-      kept[p.id] = palette.reduce((best, c) => uses(c) < uses(best) ? c : best);
-      changed = true;
-    }
-    if (changed) setShared("space.colors", kept);
     const list = this.grouped(t, collapsed);
     // agent.next / agent.prev follow the list: agents in their spaces' order.
     setAgentOrder(this.ordered().flatMap((r) => (this.agents.members.get(r.w.id) ?? []).map((a) => a.address)));
@@ -616,7 +519,6 @@ export default class Spaces extends View {
       .child(v_flex().flex_1().min_h(0).px(collapsed ? 0 : 8).pb(14).overflow_y_scrollbar().mode("always").track_scroll(this.scroll)
         // A block above (another mod's) growing, or the window resizing, shrinks this list and can push the active space out.
         .on_size_change((_size, cx) => { if (this.activeAt >= 0) { this.scroll.scroll_to_item(this.activeAt); cx.notify(); } })
-        .on_mouse_up("left", (_e, cx) => { this.pressed = null; cx.notify(); })
         .children(list))
       .when(Boolean(cards), (el) => el.child(cards))
       // On the macOS rail the traffic lights fill the header row: this unfolds it.
